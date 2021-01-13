@@ -35,10 +35,12 @@ final class Debug
      * shutdown：进程结束后
      * rpc：发送RPC
      * transfer：只在主服器内，文件中转，然后由后台机器人移走
+     *
+     * Request $request, Response $response, Configure $config,
      */
     public $_save_mode = 'shutdown';
 
-    public function __construct(Request $request, Response $response, Configure $config, array $setting)
+    public function __construct(array $setting)
     {
         $this->_star = [$_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true), memory_get_usage()];
 
