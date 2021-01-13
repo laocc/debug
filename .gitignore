@@ -1,0 +1,6 @@
+/.idea/
+*.log
+*.lock
+/vendor
+/cache
+/runtime

@@ -1,0 +1,20 @@
+{
+  "name": "laocc/debug",
+  "description": "for laocc/esp debug",
+  "homepage": "https://github.com/laocc/debug",
+  "authors": [
+    {
+      "name": "fazo",
+      "email": "fazo@qq.com"
+    }
+  ],
+  "require": {
+    "php": ">7.0",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "esp\\debug\\": "src/"
+    }
+  }
+}
