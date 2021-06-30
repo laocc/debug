@@ -109,6 +109,20 @@ class Debug extends \esp\core\Debug
     }
 
 
+    /**
+     * 读取日志
+     * @param string $file
+     * @return string
+     */
+    public function read(string $file): string
+    {
+        $file = realpath($file);
+        if (!is_readable($file)) return "## 日志文件不存在或无权限读取：\n{$file}";
+        $text = file_get_contents($file);
+        if (substr($file, -4) === '.mdz') $text = gzuncompress($text);
+        return $text;
+    }
+
     private function mk_dir(string $path, int $mode = 0740): bool
     {
         if (!$path) return false;
@@ -232,11 +246,12 @@ class Debug extends \esp\core\Debug
     {
         //        $this->_run = false;//防止重复保存
 
+        //这是从Error中发来的保存错误日志
         if ($filename[0] !== '/') {
-            //这是从Error中发来的保存错误日志
             $path = $this->_conf['error'] ?? (_RUNTIME . '/error');
             $filename = "{$path}/{$filename}";
         }
+        if ($this->_zip) $filename .= 'z';
 
         $send = null;
 
