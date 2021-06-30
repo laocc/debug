@@ -26,13 +26,6 @@ class Debug extends \esp\core\Debug
     private $_transfer_path = '';
     private $_zip = 0;
 
-    /**
-     * 保存方式:
-     * shutdown：进程结束后
-     * rpc：发送RPC，只要定义_RPC常量，从节点都是发送rpc
-     * transfer：只在主服器内，文件中转，然后由后台机器人移走
-     */
-    public $_save_mode = 'shutdown';
 
     public function __construct(array $conf)
     {
@@ -41,15 +34,15 @@ class Debug extends \esp\core\Debug
         $this->_zip = ($this->_conf['zip'] ?? 0);
         if (defined('_RPC')) {
             $this->_rpc = _RPC;
-            $this->_save_mode = 'rpc';
+            $this->mode = 'rpc';
 
             $this->isMaster = is_file(_RUNTIME . '/master.lock');
 
             //当前是主服务器，还继续判断保存方式
             if ($this->isMaster) {
-                $this->_save_mode = 'shutdown';
+                $this->mode = 'shutdown';
                 if (isset($conf['transfer'])) {
-                    $this->_save_mode = 'transfer';
+                    $this->mode = 'transfer';
                     $this->_transfer_path = $conf['transfer'];
                 }
 
@@ -98,7 +91,7 @@ class Debug extends \esp\core\Debug
         if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
 
         //临时中转文件
-        if ($this->_save_mode === 'transfer') {
+        if ($this->mode === 'transfer') {
             $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
             $this->mk_dir($this->_transfer_path);
             return file_put_contents($move, $array['data'], LOCK_EX);
@@ -255,11 +248,11 @@ class Debug extends \esp\core\Debug
 
         $send = null;
 
-        if ($this->_save_mode === 'transfer') {
+        if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
             return file_put_contents($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, LOCK_EX);
 
-        } else if ($this->_save_mode === 'rpc' and $this->_rpc) {
+        } else if ($this->mode === 'rpc' and $this->_rpc) {
 
             /**
              * 发到RPC，写入move专用目录，然后由后台移到实际目录
@@ -323,7 +316,8 @@ class Debug extends \esp\core\Debug
     public function save_logs(string $pre = '')
     {
         if (empty($this->_node)) return 'empty node';
-        else if ($this->_run === false) return 'run false';
+        else if ($this->_run === false) return 'debug not star or be stop';
+        
         $filename = $this->filename();
         if (empty($filename)) return 'null filename';
 

@@ -15,7 +15,7 @@
   },
   "autoload": {
     "files": [
-      "src/function.php"
+      "helper/function.php"
     ],
     "psr-4": {
       "esp\\debug\\": "src/"
