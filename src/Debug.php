@@ -244,7 +244,7 @@ class Debug extends \esp\core\Debug
             $path = $this->_conf['error'] ?? (_RUNTIME . '/error');
             $filename = "{$path}/{$filename}";
         }
-        if ($this->_zip) $filename .= 'z';
+        if ($this->_zip and $filename[-1] !== 'z') $filename .= 'z';
 
         $send = null;
 
@@ -317,7 +317,7 @@ class Debug extends \esp\core\Debug
     {
         if (empty($this->_node)) return 'empty node';
         else if ($this->_run === false) return 'debug not star or be stop';
-        
+
         $filename = $this->filename();
         if (empty($filename)) return 'null filename';
 
@@ -675,6 +675,7 @@ class Debug extends \esp\core\Debug
             if ($this->_hasError) $file .= '_Error';
             $p = "{$root}{$folder}{$this->_path}";
             $this->_filename = "{$p}/{$file}.md";
+            if ($this->_zip) $this->_filename .= 'z';
         }
         return $this->_filename;
     }
