@@ -10,10 +10,13 @@
   ],
   "require": {
     "php": ">7.0",
-    "laocc/esp": "*",
+    "laocc/http": "*",
     "ext-json": "*"
   },
   "autoload": {
+    "files": [
+      "src/function.php"
+    ],
     "psr-4": {
       "esp\\debug\\": "src/"
     }

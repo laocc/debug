@@ -3,13 +3,12 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
-use esp\library\Output;
-use function esp\helper\mk_dir;
-use function esp\helper\root;
+use esp\http\Http;
 
-final class Debug
+class Debug extends \esp\core\Debug
 {
     private $prevTime;
+    private $isMaster;
     private $memory;
     private $_run;
     private $_star;
@@ -20,43 +19,39 @@ final class Debug
     private $_node_len = 0;
     private $_mysql = array();
     private $_conf;
-    private $_request;
-    private $_response;
-    private $_redis;
     private $_errorText;
     private $_ROOT_len = 0;
-    private $_key;//保存记录的Key,要在控制器中->key($key)
     private $_rpc = [];
     private $_transfer_uri = '/_esp_debug_transfer';
     private $_transfer_path = '';
+    private $_zip = 0;
 
     /**
      * 保存方式:
      * shutdown：进程结束后
-     * rpc：发送RPC
+     * rpc：发送RPC，只要定义_RPC常量，从节点都是发送rpc
      * transfer：只在主服器内，文件中转，然后由后台机器人移走
-     *
-     * Request $request, Response $response, Configure $config,
      */
     public $_save_mode = 'shutdown';
 
-    public function __construct(array $setting)
+    public function __construct(array $conf)
     {
-        $this->_star = [$_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true), memory_get_usage()];
+        $this->_conf = $conf + ['path' => _RUNTIME, 'run' => false, 'host' => [], 'counter' => false];
 
-        $conf = $setting['default'];
-        if (isset($setting[_VIRTUAL])) $conf = $setting[_VIRTUAL] + $conf;
-
-        if (($conf['api'] ?? '') === 'rpc') {
+        $this->_zip = ($this->_conf['zip'] ?? 0);
+        if (defined('_RPC')) {
+            $this->_rpc = _RPC;
             $this->_save_mode = 'rpc';
-            $this->_rpc = $config->_rpc;
+
+            $this->isMaster = is_file(_RUNTIME . '/master.lock');
 
             //当前是主服务器，还继续判断保存方式
-            if (is_file(_RUNTIME . '/master.lock')) {
-                $this->_save_mode = $conf['rpc'] ?? 'shutdown';
-                $this->_transfer_path = $conf['transfer'] ?? '';
-                if (empty($this->_transfer_path)) $this->_transfer_path = _RUNTIME . '/debug/move';
-                $this->_transfer_path = root($this->_transfer_path);
+            if ($this->isMaster) {
+                $this->_save_mode = 'shutdown';
+                if (isset($conf['transfer'])) {
+                    $this->_save_mode = 'transfer';
+                    $this->_transfer_path = $conf['transfer'];
+                }
 
                 //保存节点服务器发来的日志
                 if (_VIRTUAL === 'rpc' && _URI === $this->_transfer_uri) {
@@ -66,11 +61,11 @@ final class Debug
             }
         }
 
-        $this->_conf = $conf + ['path' => _RUNTIME, 'run' => false, 'host' => [], 'counter' => false];
-        $this->_redis = $config->_Redis;
+        $this->_star = [$_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true), memory_get_usage()];
+
         $this->_ROOT_len = strlen(_ROOT);
-        $this->_run = boolval($conf['run']);
-        $this->_time = time();
+        $this->_run = boolval($this->_conf['auto'] ?? 1);
+        $this->_time = microtime(true);
         $this->prevTime = microtime(true) - $this->_star[0];
         $this->memory = memory_get_usage();
         $this->_node[0] = [
@@ -80,10 +75,14 @@ final class Debug
             'g' => ''];
         $this->prevTime = microtime(true);
         $this->relay('START', []);
-        $this->_request = $request;
-        $this->_response = $response;
     }
 
+    /**
+     * 将节点发来的日志保存到指定目录，或者直接保存
+     * 当前只会在master中执行
+     *
+     * @return bool|int|string
+     */
     private function transferDebug()
     {
         $input = file_get_contents("php://input");
@@ -91,23 +90,45 @@ final class Debug
 
         $array = json_decode($input, true);
         if (empty($array['data'])) $array['data'] = 'NULL Data';
+        else {
+            $array['data'] = base64_decode($array['data']);
+            if (!$this->_zip) $array['data'] = gzuncompress($array['data']);
+        }
+
         if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
 
         //临时中转文件
         if ($this->_save_mode === 'transfer') {
             $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
-            mk_dir($this->_transfer_path);
+            $this->mk_dir($this->_transfer_path);
             return file_put_contents($move, $array['data'], LOCK_EX);
         }
 
-        mk_dir($array['filename']);
+        $this->mk_dir($array['filename']);
         return file_put_contents($array['filename'], $array['data'], LOCK_EX);
     }
+
+
+    private function mk_dir(string $path, int $mode = 0740): bool
+    {
+        if (!$path) return false;
+        if (strrchr($path, '/') !== '/') $path = dirname($path);
+        try {
+            if (!is_dir($path)) {
+                @mkdir($path, $mode ?: 0740, true);
+            }
+            return true;
+        } catch (\Error $e) {
+            return false;
+        }
+    }
+
 
     /**
      * 将move里的临时文件移入真实目录
      * 在并发较大时，需要将日志放入临时目录，由后台移到目标目录中
      * 因为在大并发时，创建新目录的速度可能跟不上系统请求速度，有时候发生目录已存在的错误
+     *
      * @param bool $show
      * @param string|null $path
      */
@@ -142,7 +163,7 @@ final class Debug
                 if (!is_readable($p)) @mkdir($p, 0740, true);
                 else if (!is_dir($p)) @mkdir($p, 0740, true);
                 rename("{$path}/{$file}", $move);
-            } catch (\Exception $e) {
+            } catch (\Error $e) {
                 print_r(['moveDebug' => $e]);
             }
         }
@@ -202,12 +223,6 @@ final class Debug
         return $this->save_file($filename, json_encode($info, 64 | 128 | 256));
     }
 
-    public function key(string $key)
-    {
-        $this->_key = $key;
-        return $this;
-    }
-
     /**
      * @param string $filename
      * @param string $data
@@ -224,19 +239,27 @@ final class Debug
         }
 
         $send = null;
-        //以前通过redis做中转已取消，若日志量大的时候，redis会被塞满
 
         if ($this->_save_mode === 'transfer') {
-            return 'Transfer:' . file_put_contents($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, LOCK_EX);
+            //当前发生在master中，若有定义transfer，则直接发到中转目录
+            return file_put_contents($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, LOCK_EX);
 
         } else if ($this->_save_mode === 'rpc' and $this->_rpc) {
 
             /**
              * 发到RPC，写入move专用目录，然后由后台移到实际目录
              */
-            $send = Output::new()->rpc($this->_transfer_uri, $this->_rpc)
-                ->data(json_encode(['filename' => $filename, 'data' => $data], 256 | 64))->post('html');
-            if (is_array($send)) $send = json_encode($send, 256 | 64);
+            $post = json_encode([
+                'filename' => $filename,
+                'data' => base64_encode(gzcompress($data, $this->_zip ?: 5))
+            ], 256 | 64);
+
+            $http = new Http();
+            $send = $http->rpc($this->_rpc)
+                ->encode('html')
+                ->data($post)
+                ->post($this->_transfer_uri)
+                ->html();
             return "Rpc:{$send}";
         }
 
@@ -244,50 +267,37 @@ final class Debug
         if (!is_dir($p)) {
             try {
                 @mkdir($p, 0740, true);
-            } catch (\Exception $e) {
+            } catch (\Error $e) {
                 print_r($e);
             }
         }
+        if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
-        return 'Self Save:' . file_put_contents($filename, $data, LOCK_EX);
+        return file_put_contents($filename, $data, LOCK_EX);
     }
 
-    /**
-     * 读取counter值
-     * @param int $time
-     * @param bool $method
-     * @return array
-     */
-    public function counter(int $time = 0, bool $method = null)
-    {
-        if ($time === 0) $time = time();
-        $key = "{$this->_conf['counter']}_counter_" . date('Y_m_d', $time);
-        $all = $this->_redis->hGetAlls($key);
-        if (empty($all)) return ['data' => [], 'action' => []];
+    private $router = [];
+    private $response = [];
 
-        $data = [];
-        foreach ($all as $hs => $hc) {
-            $key = explode('/', $hs, 5);
-            $hour = (intval($key[0]) + 1);
-            $ca = "/{$key[4]}";
-            switch ($method) {
-                case true:
-                    $ca = "{$key[1]}:{$ca}";
-                    break;
-                case false;
-                    break;
-                default:
-                    $ca .= ucfirst($key[1]);
-                    break;
-            }
-            $vm = "{$key[2]}.{$key[2]}";
-            if (!isset($data[$vm])) $data[$vm] = ['action' => [], 'data' => []];
-            if (!isset($data[$vm]['data'][$hour])) $data[$vm]['data'][$hour] = [];
-            $data[$vm]['data'][$hour][$ca] = $hc;
-            if (!in_array($ca, $data[$vm]['action'])) $data[$vm]['action'][] = $ca;
-            sort($data[$vm]['action']);
-        }
-        return $data;
+    public function setRouter(array $request)
+    {
+        $this->router = $request + [
+                'virtual' => null,
+                'method' => null,
+                'module' => null,
+                'controller' => null,
+                'action' => null,
+                'exists' => null,
+                'params' => [],
+            ];
+    }
+
+    public function setResponse(array $result)
+    {
+        $this->response = $result + [
+                'type' => null,
+                'display' => null,
+            ];
     }
 
     /**
@@ -297,46 +307,38 @@ final class Debug
      */
     public function save_logs(string $pre = '')
     {
-        /**
-         * 控制器访问计数器
-         * 键名及表名格式是固定的
-         */
-        if ($this->_conf['counter'] and $this->_request->exists) {
-            $key = date('H/') . $this->_request->method .
-                '/' . $this->_request->virtual .
-                '/' . ($this->_request->module ?: 'auto') .
-                '/' . $this->_request->controller .
-                '/' . $this->_request->action;
-            $this->_redis->hIncrBy("{$this->_conf['counter']}_counter_" . date('Y_m_d'), $key, 1);
-        }
-
         if (empty($this->_node)) return 'empty node';
         else if ($this->_run === false) return 'run false';
         $filename = $this->filename();
         if (empty($filename)) return 'null filename';
 
+        //长耗时间记录
+        if (($limitTime = ($this->_conf['limit'] ?? 0)) and ($u = microtime(true) - $this->_time) > $limitTime / 1000) {
+            $this->error("耗时过长：总用时{$u}秒，超过限制{$limitTime}ms");
+        }
+
+        //其他未通过类，而是直接通过公共变量送入的日志
         if (isset($GLOBALS['_relay'])) $this->relay(['GLOBALS_relay' => $GLOBALS['_relay']], []);
         $this->relay('END:save_logs', []);
-        $rq = $this->_request;
-        $method = $rq->getMethod();
+        $rq = $this->router;
         $data = array();
         $data[] = "## 请求数据\n```\n";
-        $data[] = " - CallBy:\t{$pre}\n";
-        $data[] = " - METHOD:\t{$method}\n";
+        $data[] = " - SaveBy:\t{$pre}\n";
+        $data[] = " - METHOD:\t{$rq['method']}\n";
         $data[] = " - GET_URL:\t" . (defined('_URL') ? _URL : '') . "\n";
-        $data[] = " - SERVER:\t" . ($_SERVER['SERVER_ADDR'] ?? '') . "\n";
+        $data[] = " - SERV_IP:\t" . ($_SERVER['HTTP_X_SERV_IP'] ?? ($_SERVER['SERVER_ADDR'] ?? '')) . "\n";
         $data[] = " - USER_IP:\t" . ($_SERVER['REMOTE_ADDR'] ?? '') . "\n";
         $data[] = " - REAL_IP:\t" . _CIP . "\n";
-        $data[] = " - DATETIME:\t" . date('Y-m-d H:i:s', $this->_time) . "\n";
+        $data[] = " - DATETIME:\t" . date('Y-m-d H:i:s', intval($this->_time)) . "\n";
         $data[] = " - PHP_VER:\t" . phpversion() . "\n";
         $data[] = " - AGENT:\t" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
         $data[] = " - ROOT:\t" . _ROOT . "\n";
-        $data[] = " - Router:\t/{$rq->virtual}/{$rq->module}/{$rq->controller}/{$rq->action}\t({$rq->router})\n";
+        $data[] = " - Router:\t" . json_encode($rq, 256 | 64) . "\n";
 
         //一些路由结果，路由结果参数
-        $Params = implode(',', $rq->getParams());
+        $Params = implode(',', $rq['params']);
         $data[] = " - Params:\t({$Params})\n```\n";
-        if (!$this->_request->exists) goto save;
+        if (!$rq['exists']) goto save;//请求了不存在的控制器
 
         if (!empty($this->_value)) {
             $data[] = "\n## 程序附加\n```\n";
@@ -345,8 +347,10 @@ final class Debug
         }
 
         $data[] = "\n## 执行顺序\n```\n\t\t耗时\t\t耗内存\t\t占内存\t\n";
-        $data[] = "  {$this->_node[0]['t']}\t{$this->_node[0]['m']}\t{$this->_node[0]['n']}\t{$this->_node[0]['g']}进程启动到Debug被创建的消耗总量\n";
-        unset($this->_node[0]);
+        if (isset($this->_node[0])) {
+            $data[] = "  {$this->_node[0]['t']}\t{$this->_node[0]['m']}\t{$this->_node[0]['n']}\t{$this->_node[0]['g']}进程启动到Debug被创建的消耗总量\n";
+            unset($this->_node[0]);
+        }
         $data[] = "" . (str_repeat('-', 100)) . "\n";
         //具体监控点
         $len = min($this->_node_len + 3, 50);
@@ -381,7 +385,7 @@ final class Debug
             }
         }
 
-        if (($this->_conf['print']['post'] ?? 0) and ($method === 'POST' or $method === 'AJAX')) {
+        if (($this->_conf['print']['post'] ?? 0) and ($rq['method'] === 'POST' or $rq['method'] === 'AJAX')) {
             $data[] = "\n## Post原始数据：\n```\n" . file_get_contents("php://input") . "\n```\n";
         }
 
@@ -392,9 +396,8 @@ final class Debug
             $headers[] = "HeaderSent: {$hFile}($hLin)";
             $data[] = "\n## _Headers\n```\n" . json_encode($headers, 256 | 128 | 64) . "\n```\n";
             $data[] = "\n## Echo:\n```\n" . ob_get_contents() . "\n```\n";
-            $display = $this->_response->_display_Result;
-            if (empty($display)) $display = var_export($display, true);
-            $data[] = "\nContent-Type:{$this->_response->_Content_Type}\n```\n" . $display . "\n```\n";
+            if (empty($this->response['display'])) $this->response['display'] = var_export($this->response['display'], true);
+            $data[] = "\nContent-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
         }
 
         if ($this->_conf['print']['server'] ?? 0) {
@@ -403,13 +406,13 @@ final class Debug
 
         $data[] = microtime(true) . "\n";
 
+        save:
         if (defined('_SELF_DEBUG')) {
             $p = dirname($filename);
             if (!is_dir($p)) @mkdir($p, 0740, true);
             $s = file_put_contents($filename, $data, LOCK_EX);
             return "_SELF_DEBUG={$s}";
         }
-        save:
         return $this->save_file($filename, implode($data));
     }
 
@@ -437,12 +440,21 @@ final class Debug
 
     /**
      * 禁用debug
-     * @param int $mt 禁用几率，100，即为1%的机会会启用
+     * @param int $mt 禁用几率，
+     * 0    =完全禁用
+     * 1-99 =1/x几率启用
+     * 1    =1/2机会
+     * 99   =1%的机会启用
+     * 100  =启用
      * @return $this
      */
     public function disable(int $mt = 0)
     {
-        if ($mt > 1 && mt_rand(0, $mt) === 1) return $this;
+        if ($mt === 100) {
+            $this->_run = true;
+            return $this;
+        }
+        if ($mt > 0 && mt_rand(0, $mt) === 1) return $this;
         $this->_run = false;
         return $this;
     }
@@ -525,7 +537,7 @@ final class Debug
         elseif (is_bool($msg)) $msg = "\n" . var_export($msg, true);
         elseif (!is_string($msg)) $msg = strval($msg);
 
-        $this->_node_len = max(iconv_strlen($msg), $this->_node_len);
+        $this->_node_len = max(\iconv_strlen($msg), $this->_node_len);
         $nowMemo = memory_get_usage();
         $time = sprintf($this->_print_format, (microtime(true) - $this->prevTime) * 1000);
         $memo = sprintf($this->_print_format, ($nowMemo - $this->memory) / 1024);
@@ -570,17 +582,17 @@ final class Debug
      */
     public function folder(string $path = null)
     {
-        $m = $this->_request->module;
+        $m = $this->router['module'];
         if (!empty($m)) $m = strtoupper($m) . "/";
 
         if (is_null($path)) {
             if (is_null($this->_folder)) {
-                return $this->_folder = '/' . _DOMAIN . "/{$m}{$this->_request->controller}/{$this->_request->action}" . ucfirst($this->_request->method);
+                return $this->_folder = '/' . _DOMAIN . "/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
             }
             return $this->_folder;
         }
         $path = trim($path, '/');
-        $this->_folder = '/' . _DOMAIN . "/{$m}{$path}/{$this->_request->controller}/{$this->_request->action}" . ucfirst($this->_request->method);
+        $this->_folder = '/' . _DOMAIN . "/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
         return $this;
     }
 
@@ -610,7 +622,7 @@ final class Debug
     public function fullPath(string $path = null)
     {
         if (is_null($path)) return $this->folder() . $this->path();
-        $m = $this->_request->module;
+        $m = $this->router['module'];
         if ($m) $m = "/{$m}";
         $path = trim($path, '/');
         $this->_folder = '/' . _DOMAIN . "{$m}/{$path}";
@@ -644,7 +656,7 @@ final class Debug
      */
     public function filename(string $file = null): string
     {
-        if (empty($this->_request->controller)) return '';
+        if (empty($this->router['controller'])) return '';
         if ($file) return $this->file($file);
 
         if (is_null($this->_filename)) {
