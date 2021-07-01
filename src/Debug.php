@@ -285,7 +285,7 @@ class Debug extends \esp\core\Debug
     }
 
     private $router = [];
-    private $response = [];
+    private $response = ['type' => null, 'display' => null];
 
     public function setRouter(array $request)
     {
@@ -405,8 +405,11 @@ class Debug extends \esp\core\Debug
             $headers[] = "HeaderSent: {$hFile}($hLin)";
             $data[] = "\n## _Headers\n```\n" . json_encode($headers, 256 | 128 | 64) . "\n```\n";
             $data[] = "\n## Echo:\n```\n" . ob_get_contents() . "\n```\n";
-            if (empty($this->response['display'])) $this->response['display'] = var_export($this->response['display'], true);
-            $data[] = "\nContent-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
+
+            if ($this->response['type']) {
+                if (empty($this->response['display'])) $this->response['display'] = var_export($this->response['display'], true);
+                $data[] = "\nContent-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
+            }
         }
 
         if ($this->_conf['print']['server'] ?? 0) {
