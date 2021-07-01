@@ -416,6 +416,9 @@ class Debug extends \esp\core\Debug
         $data[] = microtime(true) . "\n";
 
         save:
+        $this->_run = false;
+        $this->_node = [];
+
         if (defined('_SELF_DEBUG')) {
             $p = dirname($filename);
             if (!is_dir($p)) @mkdir($p, 0740, true);
