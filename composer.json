@@ -11,6 +11,7 @@
   "require": {
     "php": ">7.0",
     "laocc/http": "*",
+    "laocc/helper": "*",
     "ext-json": "*"
   },
   "autoload": {
