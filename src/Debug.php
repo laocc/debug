@@ -31,7 +31,9 @@ class Debug extends \esp\core\Debug
     {
         $this->_conf = $conf + ['path' => _RUNTIME, 'run' => false, 'host' => [], 'counter' => false];
 
-        $this->_zip = ($this->_conf['zip'] ?? 0);
+        //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
+        $this->_zip = intval($this->_conf['zip'] ?? 0);
+
         if (defined('_RPC')) {
             $this->_rpc = _RPC;
             $this->mode = 'rpc';
@@ -342,10 +344,6 @@ class Debug extends \esp\core\Debug
         $data[] = " - AGENT:\t" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
         $data[] = " - ROOT:\t" . _ROOT . "\n";
         $data[] = " - Router:\t" . json_encode($rq, 256 | 64) . "\n";
-
-        //一些路由结果，路由结果参数
-        $Params = implode(',', $rq['params']);
-        $data[] = " - Params:\t({$Params})\n```\n";
         if (!$rq['exists']) goto save;//请求了不存在的控制器
 
         if (!empty($this->_value)) {
