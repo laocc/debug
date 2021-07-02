@@ -12,6 +12,7 @@
     "php": ">7.0",
     "laocc/http": "*",
     "laocc/helper": "*",
+    "ext-zlib": "*",
     "ext-json": "*"
   },
   "autoload": {

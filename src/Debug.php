@@ -41,10 +41,8 @@ class Debug extends \esp\core\Debug
             //当前是主服务器，还继续判断保存方式
             if ($this->isMaster) {
                 $this->mode = 'shutdown';
-                if (isset($conf['transfer'])) {
-                    $this->mode = 'transfer';
-                    $this->_transfer_path = $conf['transfer'];
-                }
+                if (isset($conf['master'])) $this->mode = $conf['master'];
+                if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
 
                 //保存节点服务器发来的日志
                 if (_VIRTUAL === 'rpc' && _URI === $this->_transfer_uri) {
@@ -250,6 +248,7 @@ class Debug extends \esp\core\Debug
 
         if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
+            if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
             return file_put_contents($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, LOCK_EX);
 
         } else if ($this->mode === 'rpc' and $this->_rpc) {
