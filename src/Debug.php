@@ -109,10 +109,10 @@ class Debug extends \esp\core\Debug
      */
     public function read(string $file): string
     {
-        $file = realpath($file);
-        if (!is_readable($file)) return "## 日志文件不存在或无权限读取：\n{$file}";
-        $text = file_get_contents($file);
-        if (substr($file, -4) === '.mdz') $text = gzuncompress($text);
+        $rFile = realpath($file);
+        if (!$rFile or !is_readable($rFile)) return "## 日志文件不存在或无权限读取：\n{$file}";
+        $text = file_get_contents($rFile);
+        if (substr($rFile, -4) === '.mdz') $text = gzuncompress($text);
         return $text;
     }
 
