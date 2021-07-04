@@ -377,9 +377,10 @@ class Debug extends \esp\core\Debug
                 headers_sent($hFile, $hLin);
                 $headers[] = "HeaderSent: {$hFile}($hLin)";
                 $data[] = "\n### Headers\n```\n" . json_encode($headers, 256 | 128 | 64) . "\n```\n";
-                $data[] = "\n### Echo:\n```\n" . ob_get_contents() . "\n```\n";
                 if ($this->response['type']) {
                     $data[] = "\n### Content-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
+                } else {
+                    $data[] = "\n### Write:\n```\n" . ob_get_contents() . "\n```\n";
                 }
             }
 
