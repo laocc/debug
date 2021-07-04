@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
+use function esp\helper\mk_dir;
+use function esp\helper\save_file;
 use esp\http\Http;
 
 class Debug extends \esp\core\Debug
@@ -93,12 +95,10 @@ class Debug extends \esp\core\Debug
         //临时中转文件
         if ($this->mode === 'transfer') {
             $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
-            $this->mk_dir($this->_transfer_path);
-            return file_put_contents($move, $array['data'], LOCK_EX);
+            return save_file($move, $array['data'], false);
         }
 
-        $this->mk_dir($array['filename']);
-        return file_put_contents($array['filename'], $array['data'], LOCK_EX);
+        return save_file($array['filename'], $array['data'], false);
     }
 
 
@@ -114,20 +114,6 @@ class Debug extends \esp\core\Debug
         $text = file_get_contents($rFile);
         if (substr($rFile, -4) === '.mdz') $text = gzuncompress($text);
         return $text;
-    }
-
-    private function mk_dir(string $path, int $mode = 0740): bool
-    {
-        if (!$path) return false;
-        if (strrchr($path, '/') !== '/') $path = dirname($path);
-        try {
-            if (!is_dir($path)) {
-                @mkdir($path, $mode ?: 0740, true);
-            }
-            return true;
-        } catch (\Error $e) {
-            return false;
-        }
     }
 
 
@@ -165,10 +151,7 @@ class Debug extends \esp\core\Debug
                     @unlink("{$path}/{$file}");
                     continue;
                 }
-
-                $p = dirname($move);
-                if (!is_readable($p)) @mkdir($p, 0740, true);
-                else if (!is_dir($p)) @mkdir($p, 0740, true);
+                mk_dir($move);
                 rename("{$path}/{$file}", $move);
             } catch (\Error $e) {
                 print_r(['moveDebug' => $e]);
@@ -237,13 +220,12 @@ class Debug extends \esp\core\Debug
      */
     public function save_file(string $filename, string $data)
     {
-        //        $this->_run = false;//防止重复保存
-
         //这是从Error中发来的保存错误日志
         if ($filename[0] !== '/') {
             $path = $this->_conf['error'] ?? (_RUNTIME . '/error');
             $filename = "{$path}/{$filename}";
         }
+
         if ($this->_zip and $filename[-1] !== 'z') $filename .= 'z';
 
         $send = null;
@@ -251,7 +233,7 @@ class Debug extends \esp\core\Debug
         if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
             if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
-            return file_put_contents($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, LOCK_EX);
+            return save_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, false);
 
         } else if ($this->mode === 'rpc' and $this->_rpc) {
 
@@ -272,23 +254,15 @@ class Debug extends \esp\core\Debug
             return "Rpc:{$send}";
         }
 
-        $p = dirname($filename);
-        if (!is_dir($p)) {
-            try {
-                @mkdir($p, 0740, true);
-            } catch (\Error $e) {
-                print_r($e);
-            }
-        }
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
-        return file_put_contents($filename, $data, LOCK_EX);
+        return save_file($filename, $data, false);
     }
 
     private $router = [];
     private $response = ['type' => null, 'display' => null];
 
-    public function setRouter(array $request)
+    public function setRouter(array $request): void
     {
         $this->router = $request + [
                 'virtual' => null,
@@ -301,7 +275,7 @@ class Debug extends \esp\core\Debug
             ];
     }
 
-    public function setResponse(array $result)
+    public function setResponse(array $result): void
     {
         $this->response = $result + [
                 'type' => null,
@@ -343,7 +317,7 @@ class Debug extends \esp\core\Debug
         $data[] = " - PHP_VER:\t" . phpversion() . "\n";
         $data[] = " - AGENT:\t" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
         $data[] = " - ROOT:\t" . _ROOT . "\n";
-        $data[] = " - Router:\t" . json_encode($rq, 256 | 64) . "\n";
+        $data[] = " - Router:\t" . json_encode($rq, 256 | 64) . "\n```\n";
         if (!$rq['exists']) goto save;//请求了不存在的控制器
 
         if (!empty($this->_value)) {
@@ -378,75 +352,65 @@ class Debug extends \esp\core\Debug
             $data[] = "\n\n##程序出错0：\n```\n" . print_r($e, true) . "\n```\n";
         }
 
-        if (1 and $this->_conf['print']['mysql'] ?? 0) {
-            if (is_array($this->_mysql)) {
-                $slow = array();
-                foreach ($this->_mysql as $i => $sql) {
-                    if (intval($sql['wait']) > 20) $slow[] = $i;
+        if (!empty($print = $this->_conf['print'])) {
+
+            if ($print['mysql'] ?? 0) {
+                if (is_array($this->_mysql)) {
+                    $slow = array();
+                    foreach ($this->_mysql as $i => $sql) {
+                        if (intval($sql['wait']) > 20) $slow[] = $i;
+                    }
+                    $data[] = "\n## Mysql 顺序：\n";
+                    $data[] = " - 当前共执行MYSQL：\t" . count($this->_mysql) . " 次\n";
+                    if (!empty($slow)) $data[] = " - 超过20Ms的语句有：\t" . implode(',', $slow) . "\n";
+                    $data[] = "```\n" . print_r($this->_mysql, true) . "\n```";
                 }
-                $data[] = "\n## Mysql 顺序：\n";
-                $data[] = " - 当前共执行MYSQL：\t" . count($this->_mysql) . " 次\n";
-                if (!empty($slow)) $data[] = " - 超过20Ms的语句有：\t" . implode(',', $slow) . "\n";
-                $data[] = "```\n" . print_r($this->_mysql, true) . "\n```";
+            }
+
+            if (($print['post'] ?? 0) and ($rq['method'] === 'POST' or $rq['method'] === 'AJAX')) {
+                $data[] = "\n## Post原始数据：\n```\n" . file_get_contents("php://input") . "\n```\n";
+            }
+
+            if ($print['html'] ?? 0) {
+                $data[] = "\n## 页面实际响应： \n";
+                $headers = headers_list();
+                headers_sent($hFile, $hLin);
+                $headers[] = "HeaderSent: {$hFile}($hLin)";
+                $data[] = "\n### Headers\n```\n" . json_encode($headers, 256 | 128 | 64) . "\n```\n";
+                $data[] = "\n### Echo:\n```\n" . ob_get_contents() . "\n```\n";
+                if ($this->response['type']) {
+                    $data[] = "\n### Content-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
+                }
+            }
+
+            if ($print['server'] ?? 0) {
+                $data['_SERVER'] = "\n## _SERVER\n```\n" . print_r($_SERVER, true) . "\n```\n";
             }
         }
 
-        if (($this->_conf['print']['post'] ?? 0) and ($rq['method'] === 'POST' or $rq['method'] === 'AJAX')) {
-            $data[] = "\n## Post原始数据：\n```\n" . file_get_contents("php://input") . "\n```\n";
-        }
-
-        if ($this->_conf['print']['html'] ?? 0) {
-            $data[] = "\n## 页面实际响应： \n";
-            $headers = headers_list();
-            headers_sent($hFile, $hLin);
-            $headers[] = "HeaderSent: {$hFile}($hLin)";
-            $data[] = "\n## _Headers\n```\n" . json_encode($headers, 256 | 128 | 64) . "\n```\n";
-            $data[] = "\n## Echo:\n```\n" . ob_get_contents() . "\n```\n";
-
-            if ($this->response['type']) {
-                if (empty($this->response['display'])) $this->response['display'] = var_export($this->response['display'], true);
-                $data[] = "\nContent-Type:{$this->response['type']}\n```\n" . $this->response['display'] . "\n```\n";
-            }
-        }
-
-        if ($this->_conf['print']['server'] ?? 0) {
-            $data['_SERVER'] = "\n## _SERVER\n```\n" . print_r($_SERVER, true) . "\n```\n";
-        }
-
-        $data[] = microtime(true) . "\n";
+        $data[] = "\n## 最后保存：" . microtime(true) . "\n";
 
         save:
         $this->_run = false;
         $this->_node = [];
 
-        if (defined('_SELF_DEBUG')) {
-            $p = dirname($filename);
-            if (!is_dir($p)) @mkdir($p, 0740, true);
-            $s = file_put_contents($filename, $data, LOCK_EX);
-            return "_SELF_DEBUG={$s}";
-        }
         return $this->save_file($filename, implode($data));
     }
 
-    /**
-     * 设置是否记录post内容
-     * @param bool $val
-     * @return $this
-     */
-    public function post(bool $val)
-    {
-        $this->_conf['print']['post'] = $val;
-        return $this;
-    }
 
     /**
-     * 设置是否记录$_SERVER
+     * 设置是否记录几个值
+     * @param string $type
      * @param bool $val
      * @return $this
      */
-    public function server(bool $val)
+    public function setPrint(string $type, bool $val = null)
     {
-        $this->_conf['print']['server'] = $val;
+        if ($type === 'null') {
+            $this->_conf['print'] = [];
+        } else {
+            $this->_conf['print'][$type] = $val;
+        }
         return $this;
     }
 
