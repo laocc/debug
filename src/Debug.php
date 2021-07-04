@@ -354,20 +354,18 @@ class Debug extends \esp\core\Debug
 
         if (!empty($print = $this->_conf['print'])) {
 
-            if ($print['mysql'] ?? 0) {
-                if (is_array($this->_mysql)) {
-                    $slow = array();
-                    foreach ($this->_mysql as $i => $sql) {
-                        if (intval($sql['wait']) > 20) $slow[] = $i;
-                    }
-                    $data[] = "\n## Mysql 顺序：\n";
-                    $data[] = " - 当前共执行MYSQL：\t" . count($this->_mysql) . " 次\n";
-                    if (!empty($slow)) $data[] = " - 超过20Ms的语句有：\t" . implode(',', $slow) . "\n";
-                    $data[] = "```\n" . print_r($this->_mysql, true) . "\n```";
+            if (($print['mysql'] ?? 0) and !empty($this->_mysql)) {
+                $slow = array();
+                foreach ($this->_mysql as $i => $sql) {
+                    if (intval($sql['wait']) > 20) $slow[] = $i;
                 }
+                $data[] = "\n## Mysql 顺序：\n";
+                $data[] = " - 当前共执行MYSQL：\t" . count($this->_mysql) . " 次\n";
+                if (!empty($slow)) $data[] = " - 超过20Ms的语句有：\t" . implode(',', $slow) . "\n";
+                $data[] = "```\n" . print_r($this->_mysql, true) . "\n```";
             }
 
-            if (($print['post'] ?? 0) and ($rq['method'] === 'POST' or $rq['method'] === 'AJAX')) {
+            if (($print['post'] ?? 0) and ($rq['method'] === 'POST')) {
                 $data[] = "\n## Post原始数据：\n```\n" . file_get_contents("php://input") . "\n```\n";
             }
 
