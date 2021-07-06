@@ -160,13 +160,6 @@ class Debug extends \esp\core\Debug
         goto reMove;
     }
 
-    /**
-     * @return Debug
-     */
-    public static function class()
-    {
-        return $GLOBALS['_Debug'] ?? null;
-    }
 
     public function error($error, $tract = null)
     {
@@ -185,6 +178,8 @@ class Debug extends \esp\core\Debug
             'Error' => $error,
             'Server' => $_SERVER,
         ];
+        if (is_array($error)) $error = json_encode($error, 256 | 64 | 128);
+        $this->relay("[red;{$error}]");
         $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['error'] ?? (_RUNTIME . '/error')];
         $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
         return $this->save_file($filename, json_encode($info, 64 | 128 | 256));
@@ -302,7 +297,6 @@ class Debug extends \esp\core\Debug
         }
 
         //其他未通过类，而是直接通过公共变量送入的日志
-        if (isset($GLOBALS['_relay'])) $this->relay(['GLOBALS_relay' => $GLOBALS['_relay']], []);
         $this->relay('END:save_logs', []);
         $rq = $this->router;
         $data = array();
@@ -482,11 +476,6 @@ class Debug extends \esp\core\Debug
 
         $this->relay("Mysql[" . (++$count) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
         return $this;
-    }
-
-    public static function recode($data)
-    {
-        $GLOBALS['_relay'][] = $data;
     }
 
 
