@@ -15,12 +15,12 @@ class Transfer
             $save = $this->accept($transfer);
             exit(getenv('SERVER_ADDR') . ";Length={$save};Time:" . microtime(true));
         }
-
     }
 
 
     /**
      * 保存其他节点发来的日志数据
+     * @param bool $transfer
      * @return bool|int|string
      */
     private function accept(bool $transfer)

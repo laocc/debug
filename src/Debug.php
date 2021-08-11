@@ -31,21 +31,20 @@ class Debug extends \esp\core\Debug
 
     public function __construct(array $conf)
     {
-        $this->_conf = $conf + ['path' => _RUNTIME, 'run' => false, 'host' => [], 'counter' => false];
+        $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
         $this->_zip = intval($this->_conf['zip'] ?? 0);
+        $this->mode = ($this->_conf['mode'] ?? ($this->_conf['api'] ?? 'shutdown'));
 
         if (defined('_RPC')) {
             $this->_rpc = _RPC;
-            $this->mode = 'rpc';
 
             $this->isMaster = is_file(_RUNTIME . '/master.lock');
 
             //当前是主服务器，还继续判断保存方式
             if ($this->isMaster) {
-                $this->mode = 'shutdown';
-                if (isset($conf['master'])) $this->mode = $conf['master'];
+                if ($this->mode === 'rpc') $this->mode = $conf['master'] ?? 'shutdown';
                 if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
 
                 //保存节点服务器发来的日志
@@ -394,6 +393,9 @@ class Debug extends \esp\core\Debug
     /**
      * 设置是否记录几个值
      * @param string $type
+     *      可设置项有：mysql,post,server,html
+     *      若设为null，则以上几项全部不记录
+     *
      * @param bool $val
      * @return $this
      */
