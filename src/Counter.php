@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace esp\debug;
 
@@ -116,7 +117,11 @@ class Counter
         $sum = [];
         foreach ($data as $vm => $vml) {
             foreach ($vml['data'] as $h => $val) {
-                $sum[$h] = array_sum($val);
+                if (!isset($sum[$h])) {
+                    $sum[$h] = array_sum($val);
+                } else {
+                    $sum[$h] += array_sum($val);
+                }
             }
         }
         $data['_count_'] = $sum;
