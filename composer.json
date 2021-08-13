@@ -12,6 +12,7 @@
     "php": ">7.1",
     "laocc/http": "*",
     "laocc/helper": "*",
+    "ext-iconv": "*",
     "ext-zlib": "*",
     "ext-json": "*"
   },
