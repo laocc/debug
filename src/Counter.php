@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
-
 use esp\core\db\Redis;
 use esp\core\Request;
 
@@ -23,6 +22,19 @@ class Counter
         if ($conf['concurrent'] ?? 0) {
             $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), '' . _TIME, 1);
         }
+    }
+
+
+    /**
+     * 记录mysql并发
+     *
+     * @param string $action
+     */
+    public function recodeMysql(string $action)
+    {
+        $key = $this->conf['mysql'] ?? null;
+        if (!$key) return;
+        $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d'), $action . '.' . strval(_TIME), 1);
     }
 
     /**
