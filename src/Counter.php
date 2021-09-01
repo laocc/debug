@@ -20,7 +20,7 @@ class Counter
 
         //统计最大并发
         if ($conf['concurrent'] ?? 0) {
-            $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), '' . _TIME, 1);
+            $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), strval(_TIME), 1);
         }
     }
 
@@ -85,7 +85,85 @@ class Counter
         $max = 0;
 
         foreach ($value as $tm => $val) {
-            $m = date('H:i', $tm);
+            $m = date('H:i', intval($tm));
+            $max = max($max, $val);
+
+            if (!isset($maxCont[$m])) {
+                $maxCont[$m] = $val;
+            } else if ($maxCont[$m] < $val) {
+                $maxCont[$m] = $val;
+            }
+
+            if (isset($sumCont[$m])) {
+                $sumCont[$m] += $val;
+            } else {
+                $sumCont[$m] = $val;
+            }
+        }
+        for ($h = 0; $h < 1440; $h++) {
+            $s = date('H:i', _DAY_TIME + $h * 60);
+            if (!isset($sumCont[$s])) $sumCont[$s] = 0;
+            if (!isset($maxCont[$s])) $maxCont[$s] = 0;
+        }
+        ksort($maxCont);
+        ksort($sumCont);
+        $sumCont = array_values($sumCont);
+        $maxCont = array_values($maxCont);
+
+        $labels = [];
+        for ($h = 0; $h < 1440 / $step; $h++) {
+            $labels[] = date('H:i', _DAY_TIME + $h * 60 * $step);
+        }
+
+        $average = $maximum = [];
+        for ($h = 0; $h < 1440; $h++) {
+            $a = intval($h / $step);
+            if (!isset($average[$a])) {
+                $average[$a] = $sumCont[$h];
+            } else {
+                $average[$a] += $sumCont[$h];
+            }
+            if (!isset($maximum[$a])) {
+                $maximum[$a] = $maxCont[$h];
+            } else if ($maximum[$a] < $maxCont[$h]) {
+                $maximum[$a] = $maxCont[$h];
+            }
+        }
+        foreach ($average as $t => $v) {
+            $average[$t] = ceil($v / (60 * $step));
+        }
+
+        /**
+         * 假设$step=60，相当于返回24节，即每小时一段，返回数据如下：
+         * $labels= ["00:00","01:00"..."22:00","23:00"];
+         * $average=[1,3,5,6...83,32];共24段
+         * $maximum结构与$average相同
+         */
+
+        return [
+            'max' => $max,//当天最高并发值
+            'label' => $labels,
+            'average' => $average,
+            'maximum' => $maximum,
+        ];
+    }
+
+    public function getMysql(int $time = _TIME, int $step = 1, string $action = null)
+    {
+        if (!$this->conf['mysql']) return [];
+        $key = "{$this->conf['mysql']}_mysql_" . date('Y_m_d', $time);
+        $value = $this->redis->hGetAlls($key);
+        if ($step === 0) return $value;
+        arsort($value);
+        $maxCont = [];
+        $sumCont = [];
+        $max = 0;
+
+        foreach ($value as $tm => $val) {
+            $tk = explode('.', $tm);
+            if ($action and $action !== $tk[0]) continue;
+
+            $m = date('H:i', intval($tk[1]));
             $max = max($max, $val);
 
             if (!isset($maxCont[$m])) {
