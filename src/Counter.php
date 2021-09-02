@@ -41,23 +41,44 @@ class Counter
         $time = _CLI ? time() : _TIME;
         $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
         if ($traceLevel === 0) return;
+
+
         $logPath = strval($this->conf['mysql_log'] ?? '');
-        if (!$logPath) return;
+        if ($logPath) {
+            $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
+            $trace = $trace[$traceLevel] ?? [];
 
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
-        $trace = $trace[$traceLevel] ?? [];
+            $log = [
+                'time' => date('H:i:s', $time),
+                'sql' => $sql,
+                'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
+                'line' => $trace['line'] ?? '0',
+                'url' => _URL,
+            ];
+            $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
+            mk_dir($fil);
 
-        $log = [
-            'time' => date('H:i:s', $time),
-            'sql' => $sql,
-            'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
-            'line' => $trace['line'] ?? '0',
-            'url' => _URL,
-        ];
-        $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
-        mk_dir($fil);
+            file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
+        }
 
-        file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
+        $key = $this->conf['mysql_count'] ?? null;
+        if ($key) {
+            $log = [
+                'sql' => preg_replace('/\:\w+/', '%s', $sql),
+                'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
+                'line' => $trace['line'] ?? '0',
+            ];
+            $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $sqlMd5 . '.log';
+            mk_dir($fil);
+            if (!is_file($fil)) {
+                file_put_contents($fil, json_encode($log, 256 | 64 | 128));
+            }
+
+            $this->redis->hIncrBy($key . '_run_' . date('Y_m_d', $time), $sqlMd5, 1);
+        }
+
+
     }
 
     /**

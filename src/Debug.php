@@ -477,6 +477,11 @@ class Debug extends \esp\core\Debug
         if (is_null($pre)) $pre = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
 
         $this->relay("Mysql[" . (++$count) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
+
+        if ($count > ($this->_conf['mysqllimit'] ?? 10000000)) {
+            $this->error("连续执行超过{$count}次SQL");
+        }
+
         return $this;
     }
 
