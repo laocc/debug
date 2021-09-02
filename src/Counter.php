@@ -86,7 +86,7 @@ class Counter
         if (!$this->conf['mysql_count']) return [];
         $key = "{$this->conf['mysql_count']}_run_" . date('Y_m_d', $time);
         $value = $this->redis->hGetAlls($key);
-        asort($value);
+        arsort($value);
         $topValue = [];
         $i = 0;
         foreach ($value as $k => $val) {
@@ -106,7 +106,7 @@ class Counter
                 $sql['run'] = $val;
             }
             $topValue[] = $sql;
-            if ($i++ >= $limit) break;
+            if ($limit > 0 and $i++ >= $limit) break;
         }
         return $topValue;
     }
