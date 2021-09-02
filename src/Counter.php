@@ -29,12 +29,14 @@ class Counter
      * 记录mysql并发
      *
      * @param string $action
+     * @return bool|string
      */
     public function recodeMysql(string $action)
     {
         $key = $this->conf['mysql'] ?? null;
-        if (!$key) return;
+        if (!$key) return false;
         $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d'), $action . '.' . strval(_TIME), 1);
+        return strval($this->conf['mysql_log'] ?? '');
     }
 
     /**
