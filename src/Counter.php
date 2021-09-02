@@ -5,6 +5,7 @@ namespace esp\debug;
 
 use esp\core\db\Redis;
 use esp\core\Request;
+use function esp\helper\mk_dir;
 
 class Counter
 {
@@ -29,14 +30,32 @@ class Counter
      * 记录mysql并发
      *
      * @param string $action
-     * @return bool|string
+     * @param string $sql
+     * @param int $traceLevel
+     * @throws \ErrorException
      */
-    public function recodeMysql(string $action)
+    public function recodeMysql(string $action, string $sql, int $traceLevel)
     {
         $key = $this->conf['mysql'] ?? null;
-        if (!$key) return false;
-        $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d'), $action . '.' . strval(_TIME), 1);
-        return strval($this->conf['mysql_log'] ?? '');
+        if (!$key) return;
+        $time = _CLI ? time() : _TIME;
+        $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
+        if ($traceLevel === 0) return;
+        $logPath = strval($this->conf['mysql_log'] ?? '');
+        if (!$logPath) return;
+
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
+        $trace = $trace[$traceLevel] ?? [];
+
+        $log = [
+            'sql' => $sql,
+            'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
+            'line' => $trace['line'] ?? '0',
+        ];
+        $fil = rtrim($logPath, '/') . date('/Y-m-d/H-i', $time) . '.log';
+        mk_dir($fil);
+
+        file_put_contents($fil, date('H:i:s', $time) . "\t" . json_encode($log, 256 | 64) . "\n", FILE_APPEND);
     }
 
     /**
