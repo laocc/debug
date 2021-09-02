@@ -27,6 +27,7 @@ class Debug extends \esp\core\Debug
     private $_transfer_uri = '/_esp_debug_transfer';
     private $_transfer_path = '';
     private $_zip = 0;
+    private $_mysql_run = 0;
 
 
     public function __construct(array $conf)
@@ -295,6 +296,10 @@ class Debug extends \esp\core\Debug
             $this->error("耗时过长：总用时{$u}秒，超过限制{$limitTime}ms");
         }
 
+        if ($this->_mysql_run > ($this->_conf['mysql_limit'] ?? 10000000)) {
+            $this->error("连续执行{$this->_mysql_run}次SQL");
+        }
+
         //其他未通过类，而是直接通过公共变量送入的日志
         $this->relay('END:save_logs', []);
         $rq = $this->router;
@@ -473,14 +478,9 @@ class Debug extends \esp\core\Debug
     public function mysql_log($val, $pre = null)
     {
         if ($this->_run === false or !($this->_conf['print']['mysql'] ?? 0)) return $this;
-        static $count = 0;
         if (is_null($pre)) $pre = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
 
-        $this->relay("Mysql[" . (++$count) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
-
-        if ($count > ($this->_conf['mysql_limit'] ?? 10000000)) {
-            $this->error("连续执行超过{$count}次SQL");
-        }
+        $this->relay("Mysql[" . (++$this->_mysql_run) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
 
         return $this;
     }
