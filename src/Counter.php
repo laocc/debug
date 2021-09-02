@@ -81,6 +81,36 @@ class Counter
 
     }
 
+    public function getTopMysql(int $time = _TIME, int $limit = 100)
+    {
+        if (!$this->conf['mysql_count']) return [];
+        $key = "{$this->conf['mysql_count']}_run_" . date('Y_m_d', $time);
+        $value = $this->redis->hGetAlls($key);
+        asort($value);
+        $topValue = [];
+        $i = 0;
+        foreach ($value as $k => $val) {
+            $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $k . '.log';
+            if (!is_readable($fil)) {
+                $sql = [
+                    'key' => $k,
+                    'run' => $val,
+                    'sql' => 'undefined',
+                    'file' => 'undefined',
+                    'line' => '',
+                ];
+            } else {
+                $js = file_get_contents($fil);
+                $sql = json_decode($js, true);
+                $sql['key'] = $k;
+                $sql['run'] = $val;
+            }
+            $topValue[] = $sql;
+            if ($i++ >= $limit) break;
+        }
+        return $topValue;
+    }
+
     /**
      * 记录各控制器请求计数 若是非法请求，不记录
      */
