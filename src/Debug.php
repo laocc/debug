@@ -478,7 +478,7 @@ class Debug extends \esp\core\Debug
 
         $this->relay("Mysql[" . (++$count) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
 
-        if ($count > ($this->_conf['mysqllimit'] ?? 10000000)) {
+        if ($count > ($this->_conf['mysql_limit'] ?? 10000000)) {
             $this->error("连续执行超过{$count}次SQL");
         }
 
