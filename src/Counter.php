@@ -48,14 +48,16 @@ class Counter
         $trace = $trace[$traceLevel] ?? [];
 
         $log = [
+            'time' => date('H:i:s', $time),
             'sql' => $sql,
             'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
             'line' => $trace['line'] ?? '0',
+            'url' => _URL,
         ];
-        $fil = rtrim($logPath, '/') . date('/Y-m-d/H-i', $time) . '.log';
+        $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
         mk_dir($fil);
 
-        file_put_contents($fil, date('H:i:s', $time) . "\t" . json_encode($log, 256 | 64) . "\n", FILE_APPEND);
+        file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
     }
 
     /**
