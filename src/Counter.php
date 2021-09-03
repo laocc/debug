@@ -64,7 +64,7 @@ class Counter
         $key = $this->conf['mysql_count'] ?? null;
         if ($key) {
             $log = [
-                'sql' => preg_replace('/\:\w+/', '%s', $sql),
+                'sql' => preg_replace(['/\:\w+/', '/\([\d\.]+,[\d\.]+\)/', '/\d{2,}/'], '%s', $sql),
                 'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
                 'line' => $trace['line'] ?? '0',
             ];
