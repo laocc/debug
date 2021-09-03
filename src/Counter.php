@@ -81,7 +81,7 @@ class Counter
 
     }
 
-    public function getTopMysql(int $time = _TIME, int $limit = 100)
+    public function getTopMysql(int $time = _TIME, int $limit = 100, int $minRun = 1)
     {
         if (!$this->conf['mysql_count']) return [];
         $key = "{$this->conf['mysql_count']}_run_" . date('Y_m_d', $time);
@@ -90,6 +90,7 @@ class Counter
         $topValue = [];
         $i = 0;
         foreach ($value as $k => $val) {
+            if ($val < $minRun) break;
             $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $k . '.log';
             if (!is_readable($fil)) {
                 $sql = [
