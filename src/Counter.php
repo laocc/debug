@@ -34,14 +34,13 @@ class Counter
      * @param int $traceLevel
      * @throws \ErrorException
      */
-    public function recodeMysql(string $action, string $sql, int $traceLevel)
+    public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
         $time = _CLI ? time() : _TIME;
         $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
-        if ($traceLevel === 0) return;
-
+        if (is_null($traceLevel)) return;
 
         $logPath = strval($this->conf['mysql_log'] ?? '');
         if ($logPath) {
