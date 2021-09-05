@@ -68,7 +68,11 @@ class Counter
                 'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
                 'line' => $trace['line'] ?? '0',
             ];
-            $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            if (substr($log['sql'], 0, 3) === 'Hit') {
+                $sqlMd5 = md5($log['sql']);
+            } else {
+                $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            }
             $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $sqlMd5 . '.log';
             mk_dir($fil);
             if (!is_file($fil)) {
