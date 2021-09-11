@@ -34,14 +34,13 @@ class Counter
      * @param int $traceLevel
      * @throws \ErrorException
      */
-    public function recodeMysql(string $action, string $sql, int $traceLevel)
+    public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
         $time = time();
         $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
-        if ($traceLevel === 0) return;
-
+        if (is_null($traceLevel)) return;
 
         $logPath = strval($this->conf['mysql_log'] ?? '');
         if ($logPath) {
@@ -68,7 +67,11 @@ class Counter
                 'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
                 'line' => $trace['line'] ?? '0',
             ];
-            $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            if (substr($log['sql'], 0, 3) === 'Hit') {
+                $sqlMd5 = md5($log['sql']);
+            } else {
+                $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            }
             $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $sqlMd5 . '.log';
             mk_dir($fil);
             if (!is_file($fil)) {
