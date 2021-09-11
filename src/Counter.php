@@ -21,7 +21,7 @@ class Counter
 
         //统计最大并发
         if ($conf['concurrent'] ?? 0) {
-            $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), strval(_TIME), 1);
+            $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), strval(time()), 1);
         }
     }
 
@@ -38,7 +38,7 @@ class Counter
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
-        $time = _CLI ? time() : _TIME;
+        $time = time();
         $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
         if ($traceLevel === 0) return;
 
@@ -81,9 +81,10 @@ class Counter
 
     }
 
-    public function getTopMysql(int $time = _TIME, int $limit = 100, int $minRun = 1)
+    public function getTopMysql(int $time = 0, int $limit = 100, int $minRun = 1)
     {
         if (!$this->conf['mysql_count']) return [];
+        if (!$time) $time = time();
         $key = "{$this->conf['mysql_count']}_run_" . date('Y_m_d', $time);
         $value = $this->redis->hGetAlls($key);
         arsort($value);
@@ -148,12 +149,14 @@ class Counter
      *      若=0则不处理直接返回原始数据
      * @return array
      */
-    public function getConcurrent(int $time = _TIME, int $step = 1)
+    public function getConcurrent(int $time = 0, int $step = 1)
     {
         if (!$this->conf['concurrent']) return [];
+        if (!$time) $time = time();
         $key = "{$this->conf['concurrent']}_concurrent_" . date('Y_m_d', $time);
         $value = $this->redis->hGetAlls($key);
         if ($step === 0) return $value;
+        $dTime = strtotime(date('Ymd'));
         arsort($value);
         $maxCont = [];
         $sumCont = [];
@@ -176,7 +179,7 @@ class Counter
             }
         }
         for ($h = 0; $h < 1440; $h++) {
-            $s = date('H:i', _DAY_TIME + $h * 60);
+            $s = date('H:i', $dTime + $h * 60);
             if (!isset($sumCont[$s])) $sumCont[$s] = 0;
             if (!isset($maxCont[$s])) $maxCont[$s] = 0;
         }
@@ -187,7 +190,7 @@ class Counter
 
         $labels = [];
         for ($h = 0; $h < 1440 / $step; $h++) {
-            $labels[] = date('H:i', _DAY_TIME + $h * 60 * $step);
+            $labels[] = date('H:i', $dTime + $h * 60 * $step);
         }
 
         $average = $maximum = [];
@@ -223,12 +226,14 @@ class Counter
         ];
     }
 
-    public function getMysql(int $time = _TIME, int $step = 1, string $action = null)
+    public function getMysql(int $time = 0, int $step = 1, string $action = null)
     {
         if (!$this->conf['mysql']) return [];
+        if (!$time) $time = time();
         $key = "{$this->conf['mysql']}_mysql_" . date('Y_m_d', $time);
         $value = $this->redis->hGetAlls($key);
         if ($step === 0) return $value;
+        $dTime = strtotime(date('Ymd'));
         arsort($value);
         $maxCont = [];
         $sumCont = [];
@@ -254,7 +259,7 @@ class Counter
             }
         }
         for ($h = 0; $h < 1440; $h++) {
-            $s = date('H:i', _DAY_TIME + $h * 60);
+            $s = date('H:i', $dTime + $h * 60);
             if (!isset($sumCont[$s])) $sumCont[$s] = 0;
             if (!isset($maxCont[$s])) $maxCont[$s] = 0;
         }
@@ -265,7 +270,7 @@ class Counter
 
         $labels = [];
         for ($h = 0; $h < 1440 / $step; $h++) {
-            $labels[] = date('H:i', _DAY_TIME + $h * 60 * $step);
+            $labels[] = date('H:i', $dTime + $h * 60 * $step);
         }
 
         $average = $maximum = [];
@@ -309,7 +314,7 @@ class Counter
      */
     public function getCounter(int $time = 0, bool $method = null)
     {
-        if ($time === 0) $time = _TIME;
+        if ($time === 0) $time = time();
         $conf = $this->conf['counter'];
         if (!$conf) return [];
         if (is_array($conf)) {
