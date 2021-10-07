@@ -10,17 +10,19 @@ use esp\library\request\Get;
 
 class Debug extends Controller
 {
-    private $_root;
-    private $_error;
-    private $_warn;
+    protected $_root;
+    protected $_error;
+    protected $_warn;
 
     public function _init()
     {
-//        parent::_init();
-        $this->_root = $this->debug()->root();
-        $this->_root = dirname($this->_root);
-        $this->_error = _RUNTIME . '/error';
-        $this->_warn = _RUNTIME . '/warn';
+        if (is_null($this->_root)) {
+            $this->_root = $this->debug()->root();
+            $this->_root = dirname($this->_root);
+        }
+        if (is_null($this->_error)) $this->_error = _RUNTIME . '/error';
+        if (is_null($this->_warn)) $this->_warn = _RUNTIME . '/warn';
+
         $this->debug()->disable();
         $this->setViewPath('@' . dirname(__DIR__) . '/views');
     }
@@ -400,8 +402,6 @@ class Debug extends Controller
         $this->assign('warn', $warn);
         $this->assign('debug', $debug);
     }
-
-
 
 
     /**
