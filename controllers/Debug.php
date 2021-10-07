@@ -5,11 +5,10 @@ namespace esp\debug_helps;
 
 use function esp\helper\root;
 use esp\core\Controller;
-use esp\library\Input;
 use esp\library\ext\Markdown;
 use esp\library\request\Get;
 
-class Helps extends Controller
+class Debug extends Controller
 {
     private $_root;
     private $_error;
@@ -23,13 +22,12 @@ class Helps extends Controller
         $this->_error = _RUNTIME . '/error';
         $this->_warn = _RUNTIME . '/warn';
         $this->debug()->disable();
-        $this->setViewPath(__DIR__ . '/views');
-        $this->setLayout(__DIR__ . '/views/layout');
+        $this->setViewPath('@' . dirname(__DIR__) . '/views');
     }
 
     public function ordAction($path)
     {
-        $key = Input::get('key', '');
+        $key = $_GET['key'] ?? '';
         $this->assign('path', $path);
         $this->assign('key', $key);
         $path = urldecode($path);
@@ -50,12 +48,11 @@ class Helps extends Controller
     public function indexGet($path)
     {
         if (empty($path)) {
-            $pathT = Input::get('path');
+            $pathT = $_GET['path'] ?? '';
             if (empty($pathT)) $pathT = $this->_root . '/' . date('Y_m_d');
         } else {
             $pathT = urldecode($path);
         }
-        $key = Input::get('key');
 
         $path = realpath($pathT);
         if (strpos($path, $this->_root) !== 0) $this->exit("无权限查看该目录:" . var_export($pathT, true));
@@ -170,7 +167,7 @@ class Helps extends Controller
         $path = urldecode($path);
         if (!is_readable($path)) $this->exit('empty');
         if (!$ext) $ext = 'md';
-        $file = Input::file($path, $ext);
+        $file = $this->file($path, $ext);
         $this->assign('path', $path);
         $this->assign('file', $file);
         if ($ext === 'json') {
@@ -180,14 +177,14 @@ class Helps extends Controller
 
     public function fileAction($file)
     {
-        if (!$file) $file = Input::get('file');
+        if (!$file) $file = $_GET['file'] ?? '';
         $path = realpath(urldecode($file));
 //        if (stripos($path, $this->_root) !== 0) $this->exit("无权限查看该文件:{$path}");
         if (!is_readable($path)) $this->exit($path . '文件不存在');
 
 //        $this->concat(false);
         $this->css('/public/vui/css/markdown.css');
-        $html = Markdown::html(file_get_contents($path), 0);
+        $html = Markdown::html(file_get_contents($path), false);
         $this->assign('html', $html);
     }
 
@@ -200,10 +197,10 @@ class Helps extends Controller
 
         $unlink = 0;
         D:
-        foreach (Input::path($path, true) as $p) {
+        foreach ($this->path($path, 0) as $p) {
 //            echo "P:{$p}\n";
             $pfile = 0;
-            foreach (Input::file($p) as $f) {
+            foreach ($this->file($p) as $f) {
 //                echo "F:{$p}/{$f}\n";
                 unlink("{$p}/{$f}");
                 $unlink++;
@@ -290,7 +287,7 @@ class Helps extends Controller
         $files = [];
         $path = $this->_error;
         if (!is_readable($path)) goto end;
-        $file = Input::file($path, 'md');
+        $file = $this->file($path, 'md');
         foreach ($file as $i => $fil) {
             $time = strtotime(substr($fil, 0, 14));
             $files[$time . ($i + 1000)] = $fil;
@@ -316,7 +313,7 @@ class Helps extends Controller
                 }
             }
         } else {
-            $file = Input::file("{$path}/{$fd}", 'md');
+            $file = $this->file("{$path}/{$fd}", 'md');
             foreach ($file as $i => $fil) {
                 $time = strtotime(substr($fil, 0, 14));
                 $files[$time . ($i + 1000)] = "{$fd}/{$fil}";
@@ -397,11 +394,38 @@ class Helps extends Controller
             $error = print_r($json, true);
             $error = substr($error, 7, -2);
         }
-        $html = Markdown::html($error, 0);
+        $html = Markdown::html($error, false);
         $this->assign('file', $file);
         $this->assign('html', $html);
         $this->assign('warn', $warn);
         $this->assign('debug', $debug);
+    }
+
+
+
+
+    /**
+     * 文件
+     * @param string $path
+     * @param string $ext
+     * @return array
+     */
+    public function file(string $path, string $ext = '')
+    {
+        if (!is_dir($path)) return [];
+        $array = array();
+        $dir = new \DirectoryIterator($path);
+        if ($ext) $ext = ltrim($ext, '.');
+        foreach ($dir as $f) {
+            if ($f->isFile()) {
+                if ($ext) {
+                    if ($f->getExtension() === $ext) $array[] = $f->getFilename();
+                } else {
+                    $array[] = $f->getFilename();
+                }
+            }
+        }
+        return $array;
     }
 
 
