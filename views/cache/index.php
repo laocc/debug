@@ -20,7 +20,6 @@
 <script>
     let vm = new Vue({
         el: '#body',
-        mixins: [accBodyMixin],
         data() {
             return {}
         },
