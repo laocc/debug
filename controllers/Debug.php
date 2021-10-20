@@ -5,8 +5,8 @@ namespace esp\debug_helps;
 
 use function esp\helper\root;
 use esp\core\Controller;
-use esp\library\ext\Markdown;
-use esp\library\request\Get;
+use esp\helper\library\ext\Markdown;
+use esp\helper\library\request\Get;
 
 class Debug extends Controller
 {
