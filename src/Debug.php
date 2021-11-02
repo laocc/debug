@@ -293,7 +293,8 @@ class Debug extends \esp\core\Debug
 
         //长耗时间记录
         if (($limitTime = ($this->_conf['limit'] ?? 0)) and ($u = microtime(true) - $this->_time) > $limitTime / 1000) {
-            $this->error("耗时过长：总用时{$u}秒，超过限制{$limitTime}ms");
+            $this->error("耗时过长，超过限制{$limitTime}ms");
+            $this->relay("[blue;总用时{$u}秒]");
         }
 
         if ($this->_mysql_run > ($this->_conf['mysql_limit'] ?? 10000000)) {
