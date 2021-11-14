@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
+use ErrorException;
 use esp\core\db\Redis;
 use esp\core\Request;
 use function esp\helper\mk_dir;
@@ -15,8 +16,8 @@ class Counter
 
     public function __construct(array $conf, Redis $redis, Request $request = null)
     {
-        $conf['mysql_log'] = rtrim($this->conf['mysql_log'], '/') . '/';
-        $conf['mysql_top'] = rtrim($this->conf['mysql_top'], '/') . '/';
+        $conf['mysql_log'] = rtrim($conf['mysql_log'], '/') . '/';
+        $conf['mysql_top'] = rtrim($conf['mysql_top'], '/') . '/';
         $this->conf = $conf;
         $this->redis = $redis;
         $this->request = $request;
@@ -30,11 +31,10 @@ class Counter
 
     /**
      * 记录mysql并发
-     *
      * @param string $action
      * @param string $sql
-     * @param int $traceLevel
-     * @throws \ErrorException
+     * @param int|null $traceLevel
+     * @throws ErrorException
      */
     public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
