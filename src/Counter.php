@@ -15,6 +15,8 @@ class Counter
 
     public function __construct(array $conf, Redis $redis, Request $request = null)
     {
+        $conf['mysql_log'] = rtrim($this->conf['mysql_log'], '/') . '/';
+        $conf['mysql_top'] = rtrim($this->conf['mysql_top'], '/') . '/';
         $this->conf = $conf;
         $this->redis = $redis;
         $this->request = $request;
@@ -72,7 +74,7 @@ class Counter
             } else {
                 $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
             }
-            $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $sqlMd5 . '.log';
+            $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $sqlMd5 . '.log';
             mk_dir($fil);
             if (!is_file($fil)) {
                 file_put_contents($fil, json_encode($log, 256 | 64 | 128));
@@ -95,7 +97,7 @@ class Counter
         $i = 0;
         foreach ($value as $k => $val) {
             if ($val < $minRun) break;
-            $fil = _RUNTIME . '/mysql_md5/' . date('Y-m-d/', $time) . $k . '.log';
+            $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $k . '.log';
             if (!is_readable($fil)) {
                 $sql = [
                     'key' => $k,
