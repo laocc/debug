@@ -16,8 +16,8 @@ class Counter
 
     public function __construct(array $conf, Redis $redis, Request $request = null)
     {
-        $conf['mysql_log'] = rtrim($conf['mysql_log'], '/') . '/';
-        $conf['mysql_top'] = rtrim($conf['mysql_top'], '/') . '/';
+        $conf['mysql_log'] = rtrim($conf['mysql_log'] ?? (_RUNTIME . '/mysql'), '/') . '/';
+        $conf['mysql_top'] = rtrim($conf['mysql_top'] ?? $conf['mysql_log'], '/') . '/';
         $this->conf = $conf;
         $this->redis = $redis;
         $this->request = $request;
