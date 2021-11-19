@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
+use ErrorException;
 use function esp\helper\mk_dir;
 use function esp\helper\save_file;
 use esp\http\Http;
@@ -124,6 +125,7 @@ class Debug extends \esp\core\Debug
      *
      * @param bool $show
      * @param string|null $path
+     * @throws ErrorException
      */
     public static function move(bool $show = false, string $path = null)
     {
@@ -212,6 +214,7 @@ class Debug extends \esp\core\Debug
      * @param string $filename
      * @param string $data
      * @return string
+     * @throws ErrorException
      */
     public function save_file(string $filename, string $data)
     {
@@ -282,6 +285,7 @@ class Debug extends \esp\core\Debug
      * 保存记录到的数据
      * @param string $pre
      * @return string
+     * @throws ErrorException
      */
     public function save_logs(string $pre = '')
     {
