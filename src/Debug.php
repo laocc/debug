@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace esp\debug;
 
 use ErrorException;
-use function esp\helper\mk_dir;
-use function esp\helper\save_file;
 use esp\http\Http;
 
 class Debug extends \esp\core\Debug
@@ -77,7 +75,7 @@ class Debug extends \esp\core\Debug
      * 将节点发来的日志保存到指定目录，或者直接保存
      * 当前只会在master中执行
      *
-     * @return bool|int|string
+     * @return int|string
      */
     private function transferDebug()
     {
@@ -96,10 +94,23 @@ class Debug extends \esp\core\Debug
         //临时中转文件
         if ($this->mode === 'transfer') {
             $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
-            return save_file($move, $array['data'], false);
+            return $this->save_md_file($move, $array['data'], false);
         }
 
-        return save_file($array['filename'], $array['data'], false);
+        return $this->save_md_file($array['filename'], $array['data'], false);
+    }
+
+    private function save_md_file(string $file, $content): int
+    {
+        $path = dirname($file);
+        $fn = fopen(__FILE__, 'r');
+        if (flock($fn, LOCK_EX)) {
+            if (!file_exists($path)) @mkdir($path, 0740, true);
+            flock($fn, LOCK_UN);
+        }
+        fclose($fn);
+        if (is_array($content)) $content = json_encode($content, 256 | 64);
+        return file_put_contents($file, $content, LOCK_EX);
     }
 
 
@@ -153,7 +164,8 @@ class Debug extends \esp\core\Debug
                     @unlink("{$path}/{$file}");
                     continue;
                 }
-                mk_dir($move);
+                $path = dirname($move);
+                if (!file_exists($path)) @mkdir($path, 0740, true);
                 rename("{$path}/{$file}", $move);
             } catch (\Error $e) {
                 print_r(['moveDebug' => $e]);
@@ -184,7 +196,7 @@ class Debug extends \esp\core\Debug
         $this->relay("[red;{$error}]");
         $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['error'] ?? (_RUNTIME . '/error')];
         $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
-        return $this->save_file($filename, json_encode($info, 64 | 128 | 256));
+        return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
     }
 
     public function warn($error, $tract = null)
@@ -207,7 +219,7 @@ class Debug extends \esp\core\Debug
         ];
         $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['warn'] ?? (_RUNTIME . '/warn')];
         $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
-        return $this->save_file($filename, json_encode($info, 64 | 128 | 256));
+        return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
     }
 
     /**
@@ -216,7 +228,7 @@ class Debug extends \esp\core\Debug
      * @return string
      * @throws ErrorException
      */
-    public function save_file(string $filename, string $data)
+    public function save_debug_file(string $filename, string $data)
     {
         //这是从Error中发来的保存错误日志
         if ($filename[0] !== '/') {
@@ -231,7 +243,7 @@ class Debug extends \esp\core\Debug
         if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
             if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
-            return save_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, false);
+            return $this->save_md_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, false);
 
         } else if ($this->mode === 'rpc' and $this->_rpc) {
 
@@ -254,7 +266,7 @@ class Debug extends \esp\core\Debug
 
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
-        return save_file($filename, $data, false);
+        return $this->save_md_file($filename, $data, false);
     }
 
     private $router = [];
@@ -396,7 +408,7 @@ class Debug extends \esp\core\Debug
         $this->_run = false;
         $this->_node = [];
 
-        return $this->save_file($filename, implode($data));
+        return $this->save_debug_file($filename, implode($data));
     }
 
 
@@ -533,7 +545,7 @@ class Debug extends \esp\core\Debug
 
     /**
      * 设置或读取debug文件保存的根目录
-     * @param $path
+     * @param string|null $path
      * @return $this|string
      */
     public function root(string $path = null)
@@ -608,7 +620,7 @@ class Debug extends \esp\core\Debug
 
     /**
      * 设置文件名
-     * @param $file
+     * @param string|null $file
      * @return $this|string
      */
     public function file(string $file = null)
