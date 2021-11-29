@@ -14,7 +14,7 @@ foreach ($file as $i => $fil) {
 ksort($nFile);
 foreach ($nFile as $i => $fil) {
     $full = urlencode("{$path}/{$fil}");
-    echo "<a href='/debug/file/{$full}' class='layui-btn layui-btn-sm open'  
+    echo "<a href='{$linkPath}/debug/file/{$full}' class='layui-btn layui-btn-sm open'  
         style='margin-right:1em;margin-bottom:1em;' width='1200' height='600' title='{$path}/{$fil}'>{$i}</a>";
 }
 echo '</div>';

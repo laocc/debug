@@ -25,6 +25,9 @@ class Debug extends Controller
 
         $this->debug()->disable();
         $this->setViewPath('@' . dirname(__DIR__) . '/views');
+        if ($this->_request->isGet()) {
+            $this->assign('linkPath', $this->linkPath ?? '');
+        }
     }
 
     public function ordAction($path)

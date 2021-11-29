@@ -2,22 +2,22 @@
 echo '<h4 style="padding:0.5em;">';
 $pathA = explode('/', $path);
 $dp = urlencode($debug);
-echo "<a href='/debug/index/{$dp}' class='blue'>{$debug}</a>";
+echo "<a href='{$linkPath}/debug/index/{$dp}' class='blue'>{$debug}</a>";
 
 foreach ($pathA as $p) {
     if (empty($p)) continue;
     $debug .= "/{$p}";
     $dp = urlencode($debug);
-    echo "<a href='/debug/index/{$dp}' class='blue'>/{$p}</a>";
+    echo "<a href='{$linkPath}/debug/index/{$dp}' class='blue'>/{$p}</a>";
 }
 echo "<a href='#' onclick='$(\"#form\").show();$(this).hide();return false;' style='float:right;color:#aaa;'>定位&筛选</a>\n";
-echo "<a href='/debug/ord/{$dp}' class='open' data-width='700' data-height='500'>查找</a>\n";
+echo "<a href='{$linkPath}/debug/ord/{$dp}' class='open' data-width='700' data-height='500'>查找</a>\n";
 echo '</h4>';
 
 
 echo <<<HTML
 <div id="form" style="display: none;">
-<form action="/debug/index" method="get" autocomplete="off" style="margin:1em;width:600px;display:inline-block;float:left;">
+<form action="{$linkPath}/debug/index" method="get" autocomplete="off" style="margin:1em;width:600px;display:inline-block;float:left;">
     <input type="tel" name="path" class="layui-input" style="width:400px;display:inline-block;float:left;"
            placeholder="输入日志文件完整路径快速查看">
     <button class="layui-btn">定位</button>
@@ -52,7 +52,7 @@ foreach ($allDir[0] as $name => $tmp) {
             $name .= "({$ns['name']})";
         }
     }
-    echo "<tr><td><a href='/debug/index/{$p}' class='{$color}'>{$name}</a></td></tr>";
+    echo "<tr><td><a href='{$linkPath}/debug/index/{$p}' class='{$color}'>{$name}</a></td></tr>";
 }
 echo '</table>';
 
@@ -80,7 +80,7 @@ foreach ($files as $name => $tmp) {
     } else {
         $name = implode(':', [$tmp[0][0], $tmp[0][1], $tmp[0][2]]);//. "-{$tmp[0][3]}";
     }
-    echo "<li class='fs16'><a href='/debug/file/{$p}' width='1600' height='750' class='open layui-btn layui-btn-xs'>{$name}</a></li>\n";
+    echo "<li class='fs16'><a href='{$linkPath}/debug/file/{$p}' width='1600' height='750' class='open layui-btn layui-btn-xs'>{$name}</a></li>\n";
 }
 echo "</ul>\n";
 
