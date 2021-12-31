@@ -6,6 +6,7 @@ namespace esp\debug;
 use ErrorException;
 use esp\core\db\Redis;
 use esp\core\Request;
+use function esp\helper\mk_dir;
 
 class Counter
 {
@@ -58,7 +59,7 @@ class Counter
                     'url' => _URL,
                 ];
                 $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
-                $this->mk_path($fil);
+                mk_dir($fil);
 
                 file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
             }
@@ -76,7 +77,7 @@ class Counter
                     $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
                 }
                 $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $sqlMd5 . '.log';
-                $this->mk_path($fil);
+                mk_dir($fil);
                 if (!is_file($fil)) {
                     file_put_contents($fil, json_encode($log, 256 | 64 | 128));
                 }
@@ -86,22 +87,6 @@ class Counter
 
         }, $action, $sql, $traceLevel);
 
-    }
-
-    private function mk_path(string $file): void
-    {
-        $path = dirname($file);
-        try {
-            $fn = fopen(__FILE__, 'r');
-            if (flock($fn, LOCK_EX)) {
-                if (!file_exists($path)) @mkdir($path, 0740, true);
-                flock($fn, LOCK_UN);
-            }
-            fclose($fn);
-            return;
-        } catch (\Error $e) {
-            return;
-        }
     }
 
     public function getTopMysql(int $time = 0, int $limit = 100, int $minRun = 1)

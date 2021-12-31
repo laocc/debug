@@ -5,6 +5,7 @@ namespace esp\debug;
 
 use ErrorException;
 use esp\http\Http;
+use function esp\helper\locked;
 
 class Debug extends \esp\core\Debug
 {
@@ -94,23 +95,22 @@ class Debug extends \esp\core\Debug
         //临时中转文件
         if ($this->mode === 'transfer') {
             $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
-            return $this->save_md_file($move, $array['data'], false);
+            return $this->save_md_file($move, $array['data']);
         }
 
-        return $this->save_md_file($array['filename'], $array['data'], false);
+        return $this->save_md_file($array['filename'], $array['data']);
     }
 
     private function save_md_file(string $file, $content): int
     {
-        $path = dirname($file);
-        $fn = fopen(__FILE__, 'r');
-        if (flock($fn, LOCK_EX)) {
+        return locked('save_md_files', function (string $file, $content) {
+
+            $path = dirname($file);
             if (!file_exists($path)) @mkdir($path, 0740, true);
-            flock($fn, LOCK_UN);
-        }
-        fclose($fn);
-        if (is_array($content)) $content = json_encode($content, 256 | 64);
-        return file_put_contents($file, $content, LOCK_EX);
+            if (is_array($content)) $content = json_encode($content, 256 | 64);
+            return file_put_contents($file, $content, LOCK_EX);
+
+        }, $file, $content);
     }
 
 
@@ -243,7 +243,7 @@ class Debug extends \esp\core\Debug
         if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
             if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
-            return $this->save_md_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data, false);
+            return $this->save_md_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data);
 
         } else if ($this->mode === 'rpc' and $this->_rpc) {
 
@@ -266,7 +266,7 @@ class Debug extends \esp\core\Debug
 
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
-        return $this->save_md_file($filename, $data, false);
+        return $this->save_md_file($filename, $data);
     }
 
     private $router = [];
