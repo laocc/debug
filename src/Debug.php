@@ -103,14 +103,13 @@ class Debug extends \esp\core\Debug
 
     private function save_md_file(string $file, $content): int
     {
-        return locked('save_md_files', function (string $file, $content) {
-
-            $path = dirname($file);
+        $path = dirname($file);
+        locked("mkdir_{$path}", function (string $path) {
             if (!file_exists($path)) @mkdir($path, 0740, true);
-            if (is_array($content)) $content = json_encode($content, 256 | 64);
-            return file_put_contents($file, $content, LOCK_EX);
+        }, $path);
 
-        }, $file, $content);
+        if (is_array($content)) $content = json_encode($content, 256 | 64);
+        return file_put_contents($file, $content, LOCK_EX);
     }
 
 
