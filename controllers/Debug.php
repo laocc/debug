@@ -76,6 +76,7 @@ class Debug extends Controller
 
     public function counterGet()
     {
+        $this->assign('vueMixin', $this->vueMixin ?? '');
     }
 
     public function counterAjax()
@@ -118,8 +119,9 @@ class Debug extends Controller
 
     /**
      * 读取文件目录所有文件
+     *
      * @param string $path
-     * @param string $ext 只读取指定文件类型
+     * @param int $lev
      * @return array
      */
     private function path(string $path, int $lev = 0)

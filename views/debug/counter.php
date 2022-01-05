@@ -48,7 +48,7 @@
 
     let vm = new Vue({
         el: '#body',
-        mixins: [expBodyMixin],
+        mixins: [<?=$vueMixin?>],
         data() {
             return {
                 bodyDataApi: '/debug/counter',
