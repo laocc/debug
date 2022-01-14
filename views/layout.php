@@ -18,7 +18,7 @@
     <script src="/public/vui/node_modules/jquery/dist/jquery.min.js"></script>
     <script src="/public/vui/node_modules/vue/dist/vue.js"></script>
     <script src="/public/vui/node_modules/http-vue-loader/src/httpVueLoader.js"></script>
-    <script src="/public/vui/node_modules/layui-src/dist/layui.all.js"></script>
+    <script src="/public/vui/node_modules/layui-src/dist/layui.js"></script>
     <script src="/public/vui/node_modules/element-ui/lib/index.js"></script>
 
     <script src="/public/vui/js/extend/utf8.js?__RAND__"></script>
@@ -29,6 +29,8 @@
     <script src="/public/vui/extend/layui.patch.js?__RAND__"></script>
     <script src="/public/vui/extend/vue.patch.js?__RAND__"></script>
     <script src="/public/vui/js/progress.js?__RAND__"></script>
+    <script src="/public/resource/js/mixin.js?__RAND__"></script>
+
     <?= $_css ?>
 </head>
 <body>
