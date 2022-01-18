@@ -104,7 +104,7 @@ class Debug extends \esp\core\Debug
     private function save_md_file(string $file, $content): int
     {
         $path = dirname($file);
-        locked("mkdir_{$path}", function (string $path) {
+        locked('debugMkDir', function (string $path) {
             if (!file_exists($path)) @mkdir($path, 0740, true);
         }, $path);
 
