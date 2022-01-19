@@ -135,7 +135,6 @@ class Debug extends \esp\core\Debug
      *
      * @param bool $show
      * @param string|null $path
-     * @throws ErrorException
      */
     public static function move(bool $show = false, string $path = null)
     {
