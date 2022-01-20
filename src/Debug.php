@@ -224,7 +224,6 @@ class Debug extends \esp\core\Debug
      * @param string $filename
      * @param string $data
      * @return string
-     * @throws ErrorException
      */
     public function save_debug_file(string $filename, string $data)
     {
@@ -283,6 +282,11 @@ class Debug extends \esp\core\Debug
             ];
     }
 
+    public function setController(string $cont)
+    {
+        $this->router['controller'] = $cont;
+    }
+
     public function setResponse(array $result): void
     {
         $this->response = $result + [
@@ -317,7 +321,10 @@ class Debug extends \esp\core\Debug
 
         //其他未通过类，而是直接通过公共变量送入的日志
         $this->relay('END:save_logs', []);
-        $rq = $this->router;
+        $rq = &$this->router;
+        $params = $rq['params'];
+        unset($rq['params']);
+
         $data = array();
         $data[] = "## 请求数据\n```\n";
         $data[] = " - SaveBy:\t{$pre}\n";
@@ -330,7 +337,8 @@ class Debug extends \esp\core\Debug
         $data[] = " - PHP_VER:\t" . phpversion() . "\n";
         $data[] = " - AGENT:\t" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
         $data[] = " - ROOT:\t" . _ROOT . "\n";
-        $data[] = " - Router:\t" . json_encode($rq, 256 | 64) . "\n```\n";
+        $data[] = " - Router:\t" . json_encode($rq, 256 | 64 | 128) . "\n```\n";
+        $data[] = " - Params:\t" . json_encode($params, 256 | 64) . "\n```\n";
         if (!$rq['exists']) goto save;//请求了不存在的控制器
 
         if (!empty($this->_value)) {
