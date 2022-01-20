@@ -284,7 +284,7 @@ class Debug extends \esp\core\Debug
 
     public function setController(string $cont)
     {
-        $this->router['entrance'] = $cont;
+        $this->router['entrance'] = "{$cont}->{$this->router['action']}{$this->router['method']}(...params)";
     }
 
     public function setResponse(array $result): void
