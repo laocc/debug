@@ -3,9 +3,8 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
-use ErrorException;
+use esp\core\Dispatcher;
 use esp\http\Http;
-use function esp\helper\locked;
 
 class Debug extends \esp\core\Debug
 {
@@ -28,10 +27,12 @@ class Debug extends \esp\core\Debug
     private $_transfer_path = '';
     private $_zip = 0;
     private $_mysql_run = 0;
+    private $_dispatcher;
 
 
-    public function __construct(array $conf)
+    public function __construct(Dispatcher $dispatcher, array $conf)
     {
+        $this->_dispatcher =& $dispatcher;
         $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
@@ -104,7 +105,7 @@ class Debug extends \esp\core\Debug
     private function save_md_file(string $file, $content): int
     {
         $path = dirname($file);
-        locked('debugMkDir', function (string $path) {
+        $this->_dispatcher->locked('debug.save_md_file', function (string $path) {
             if (!file_exists($path)) @mkdir($path, 0740, true);
         }, $path);
 
