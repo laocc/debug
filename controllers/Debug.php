@@ -10,18 +10,18 @@ use esp\helper\library\request\Get;
 
 class Debug extends Controller
 {
-    protected $_root;
-    protected $_error;
-    protected $_warn;
+    protected $_rootPath;
+    protected $_errorPath;
+    protected $_warnPath;
 
     public function _init()
     {
-        if (is_null($this->_root)) {
-            $this->_root = $this->debug()->root();
-            $this->_root = dirname($this->_root);
+        if (is_null($this->_rootPath)) {
+            $this->_rootPath = $this->debug()->root();
+            $this->_rootPath = dirname($this->_rootPath);
         }
-        if (is_null($this->_error)) $this->_error = _RUNTIME . '/error';
-        if (is_null($this->_warn)) $this->_warn = _RUNTIME . '/warn';
+        if (is_null($this->_errorPath)) $this->_errorPath = _RUNTIME . '/error';
+        if (is_null($this->_warnPath)) $this->_warnPath = _RUNTIME . '/warn';
 
         $this->debug()->disable();
         $this->setViewPath('@' . dirname(__DIR__) . '/views');
@@ -54,13 +54,13 @@ class Debug extends Controller
     {
         if (empty($path)) {
             $pathT = $_GET['path'] ?? '';
-            if (empty($pathT)) $pathT = $this->_root . '/' . date('Y_m_d');
+            if (empty($pathT)) $pathT = $this->_rootPath . '/' . date('Y_m_d');
         } else {
             $pathT = urldecode($path);
         }
 
         $path = realpath($pathT);
-        if (strpos($path, $this->_root) !== 0) $this->exit("无权限查看该目录:" . var_export($pathT, true));
+        if (strpos($path, $this->_rootPath) !== 0) $this->exit("无权限查看该目录:" . var_export($pathT, true));
 
         if (is_file($path)) $path = dirname($path);
 
@@ -70,8 +70,8 @@ class Debug extends Controller
         ksort($file[1]);
 //        ksort($file);
         $this->assign('allDir', $file);
-        $this->assign('path', substr($path, strlen($this->_root)));
-        $this->assign('debug', $this->_root);
+        $this->assign('path', substr($path, strlen($this->_rootPath)));
+        $this->assign('debug', $this->_rootPath);
     }
 
     public function counterGet()
@@ -110,8 +110,8 @@ class Debug extends Controller
 
     public function o_indexAction()
     {
-        if (!is_readable($this->_root)) $this->exit('empty');
-        $file = $this->path($this->_root);
+        if (!is_readable($this->_rootPath)) $this->exit('empty');
+        $file = $this->path($this->_rootPath);
         krsort($file);
         $this->assign('allDir', $file);
     }
@@ -186,7 +186,7 @@ class Debug extends Controller
     {
         if (!$file) $file = $_GET['file'] ?? '';
         $path = realpath(urldecode($file));
-//        if (stripos($path, $this->_root) !== 0) $this->exit("无权限查看该文件:{$path}");
+//        if (stripos($path, $this->_rootPath) !== 0) $this->exit("无权限查看该文件:{$path}");
         if (!is_readable($path)) $this->exit($path . '文件不存在');
 
 //        $this->concat(false);
@@ -200,7 +200,7 @@ class Debug extends Controller
     {
         $path = urldecode($path);
 
-        if (stripos($path, $this->_root) !== 0) return '非Debug目录禁止删除';
+        if (stripos($path, $this->_rootPath) !== 0) return '非Debug目录禁止删除';
 
         $unlink = 0;
         D:
@@ -225,7 +225,7 @@ class Debug extends Controller
 
     public function error_matchAction($warn)
     {
-        $path = $warn ? $this->_warn : $this->_error;
+        $path = $warn ? $this->_warnPath : $this->_errorPath;
         $dir = new \DirectoryIterator($path);
         $value = [];
         $client = [];
@@ -292,7 +292,7 @@ class Debug extends Controller
     public function errorAction()
     {
         $files = [];
-        $path = $this->_error;
+        $path = $this->_errorPath;
         if (!is_readable($path)) goto end;
         $file = $this->file($path, 'md');
         foreach ($file as $i => $fil) {
@@ -308,7 +308,7 @@ class Debug extends Controller
     public function warnAction($fd)
     {
         $files = $folder = [];
-        $path = $this->_warn;
+        $path = $this->_warnPath;
         if (!is_readable($path)) goto end;
         if (empty($fd)) {
             $dir = new \DirectoryIterator($path);
@@ -345,7 +345,7 @@ class Debug extends Controller
     {
         $error = urldecode($error);
         if ($error === 'null') $error = null;
-        $path = $warn ? $this->_warn : $this->_error;
+        $path = $warn ? $this->_warnPath : $this->_errorPath;
         $dir = new \DirectoryIterator($path);
         $c = 0;
         foreach ($dir as $f) {
@@ -379,7 +379,7 @@ class Debug extends Controller
     public function error_delAjax($file, $warn)
     {
         $file = urldecode($file);
-        $path = $warn ? $this->_warn : $this->_error;
+        $path = $warn ? $this->_warnPath : $this->_errorPath;
         $filename = root($path . "/{$file}");
         if (!is_readable($filename)) return "{$file} not exists.";
         if (stripos($filename, $path) !== 0) return '非Debug目录禁止删除';
@@ -388,7 +388,7 @@ class Debug extends Controller
 
     public function error_viewAction($file, $warn)
     {
-        $path = $warn ? $this->_warn : $this->_error;
+        $path = $warn ? $this->_warnPath : $this->_errorPath;
         $file = urldecode($file);
         $filename = root($path . "/{$file}");
         if (!is_readable($filename)) $this->exit("{$file} not exists.");
