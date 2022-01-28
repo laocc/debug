@@ -207,7 +207,7 @@ class Debug extends Controller
         foreach ($this->path($path, 0) as $p) {
 //            echo "P:{$p}\n";
             $pfile = 0;
-            foreach ($this->file($p) as $f) {
+            foreach ($this->file($p, []) as $f) {
 //                echo "F:{$p}/{$f}\n";
                 unlink("{$p}/{$f}");
                 $unlink++;
@@ -294,7 +294,8 @@ class Debug extends Controller
         $files = [];
         $path = $this->_errorPath;
         if (!is_readable($path)) goto end;
-        $file = $this->file($path, 'md');
+        var_dump($path);
+        $file = $this->file($path, ['md', 'json']);
         foreach ($file as $i => $fil) {
             $time = strtotime(substr($fil, 0, 14));
             $files[$time . ($i + 1000)] = $fil;
@@ -320,7 +321,7 @@ class Debug extends Controller
                 }
             }
         } else {
-            $file = $this->file("{$path}/{$fd}", 'md');
+            $file = $this->file("{$path}/{$fd}", ['md', 'json']);
             foreach ($file as $i => $fil) {
                 $time = strtotime(substr($fil, 0, 14));
                 $files[$time . ($i + 1000)] = "{$fd}/{$fil}";
@@ -412,19 +413,21 @@ class Debug extends Controller
     /**
      * 文件
      * @param string $path
-     * @param string $ext
+     * @param  $ext
      * @return array
      */
-    public function file(string $path, string $ext = '')
+    public function file(string $path, $ext)
     {
         if (!is_dir($path)) return [];
         $array = array();
         $dir = new \DirectoryIterator($path);
-        if ($ext) $ext = ltrim($ext, '.');
+        if (empty($ext)) $ext = [];
+        if (is_string($ext)) $ext = [$ext];
+        foreach ($ext as &$t) $t = trim($t, '.');
         foreach ($dir as $f) {
             if ($f->isFile()) {
                 if ($ext) {
-                    if ($f->getExtension() === $ext) $array[] = $f->getFilename();
+                    if (in_array($f->getExtension(), $ext)) $array[] = $f->getFilename();
                 } else {
                     $array[] = $f->getFilename();
                 }
