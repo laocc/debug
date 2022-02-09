@@ -37,7 +37,7 @@ class Debug extends \esp\core\Debug
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
         $this->_zip = intval($this->_conf['zip'] ?? 0);
-        $this->mode = ($this->_conf['mode'] ?? ($this->_conf['api'] ?? 'shutdown'));
+        $this->mode = $this->_conf['mode'];
 
         if (defined('_RPC')) {
             $this->_rpc = _RPC;

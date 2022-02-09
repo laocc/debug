@@ -294,7 +294,6 @@ class Debug extends Controller
         $files = [];
         $path = $this->_errorPath;
         if (!is_readable($path)) goto end;
-        var_dump($path);
         $file = $this->file($path, ['md', 'json']);
         foreach ($file as $i => $fil) {
             $time = strtotime(substr($fil, 0, 14));
