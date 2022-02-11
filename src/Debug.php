@@ -105,7 +105,7 @@ class Debug extends \esp\core\Debug
     private function save_md_file(string $file, $content): int
     {
         $path = dirname($file);
-        $this->_dispatcher->locked('debug.save_md_file', function (string $path) {
+        $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
             if (!file_exists($path)) @mkdir($path, 0740, true);
         }, $path);
 
