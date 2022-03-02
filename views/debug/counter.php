@@ -51,7 +51,7 @@
         mixins: [<?=$vueMixin?>],
         data() {
             return {
-                bodyDataApi: '/debug/counter',
+                bodyDataApi: '<?=$linkPath?>/debug/counter',
             }
         }
     });
