@@ -174,13 +174,14 @@ class Debug
     }
 
 
-    public function error($error, $tract = null)
+    /**
+     * @param $error
+     * @param int $preLev
+     * @return int|string
+     */
+    public function error($error, int $preLev = 0)
     {
-        if (is_null($tract)) {
-            $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-        } else if (is_int($tract)) {
-            $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $tract + 1)[$tract] ?? [];
-        }
+        $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
         $info = [
             'time' => date('Y-m-d H:i:s'),
             'HOST' => getenv('SERVER_ADDR'),
@@ -198,13 +199,14 @@ class Debug
         return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
     }
 
-    public function warn($error, $tract = null)
+    /**
+     * @param $error
+     * @param int $preLev
+     * @return int|string
+     */
+    public function warn($error, int $preLev = 0)
     {
-        if (is_null($tract)) {
-            $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-        } else if (is_int($tract)) {
-            $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $tract + 1)[$tract] ?? [];
-        }
+        $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
 
         $info = [
             'time' => date('Y-m-d H:i:s'),
@@ -495,13 +497,12 @@ class Debug
 
     /**
      * @param $val
-     * @param null $pre
+     * @param int $pre
      * @return $this
      */
-    public function mysql_log($val, $pre = null): Debug
+    public function mysql_log($val, $pre = 1): Debug
     {
         if ($this->_run === false or !($this->_conf['print']['mysql'] ?? 0)) return $this;
-        if (is_null($pre)) $pre = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
 
         $this->relay("Mysql[" . (++$this->_mysql_run) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
 
@@ -513,18 +514,20 @@ class Debug
      * 创建一个debug点
      *
      * @param $msg
-     * @param array|null $prev 调用的位置，若是通过中间件调用，请在调用此函数时提供下面的内容：
+     * @param int $preLev 调用的位置，若是通过中间件调用，请在调用此函数时提供下面的内容：
      * @return $this|bool
      */
-    public function relay($msg, array $prev = null): Debug
+    public function relay($msg, int $preLev = 0): Debug
     {
         if (!$this->_run) return $this;
-        if (is_null($prev)) $prev = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-        if (isset($prev['file'])) {
+        $prev = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
+
+        if (is_array($prev) and isset($prev['file'])) {
             $file = substr($prev['file'], $this->_ROOT_len) . " [{$prev['line']}]";
         } else {
             $file = null;
         }
+
         if (is_array($msg)) $msg = "\n" . print_r($msg, true);
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
         elseif (is_null($msg)) $msg = "\n" . var_export($msg, true);
