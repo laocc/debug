@@ -6,7 +6,7 @@ namespace esp\debug;
 use esp\core\Dispatcher;
 use esp\http\Http;
 
-class Debug extends \esp\core\Debug
+class Debug
 {
     private $prevTime;
     private $isMaster;
@@ -493,7 +493,12 @@ class Debug extends \esp\core\Debug
         return $this->_value[$name] ?? null;
     }
 
-    public function mysql_log($val, $pre = null)
+    /**
+     * @param $val
+     * @param null $pre
+     * @return $this
+     */
+    public function mysql_log($val, $pre = null): Debug
     {
         if ($this->_run === false or !($this->_conf['print']['mysql'] ?? 0)) return $this;
         if (is_null($pre)) $pre = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
