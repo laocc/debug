@@ -518,7 +518,9 @@ class Debug
     public function relay($msg, int $preLev = 0): Debug
     {
         if (!$this->_run) return $this;
-        $prev = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
+//        $prev = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
+        $prev = array_reverse(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1))[0] ?? [];
+//        $prev = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1), -1, 1)[0];
 
         if (is_array($prev) and isset($prev['file'])) {
             $file = substr($prev['file'], $this->_ROOT_len) . " [{$prev['line']}]";
