@@ -70,7 +70,7 @@ class Debug
             'n' => sprintf($this->_print_format, ($this->memory) / 1024),
             'g' => ''];
         $this->prevTime = microtime(true);
-        $this->relay('START', []);
+        $this->relay('START', 1);
     }
 
     /**
@@ -319,7 +319,7 @@ class Debug
         }
 
         //其他未通过类，而是直接通过公共变量送入的日志
-        $this->relay('END:save_logs', []);
+        $this->relay('END:save_logs', -1);
         $rq = &$this->router;
         $rq['params'] = json_encode($rq['params'], 320);
 
@@ -457,29 +457,27 @@ class Debug
 
     /**
      * 启动，若程序入口已经启动，这里则不需要执行
-     * @param null $pre
+     * @param int $pre
      * @return $this
      */
-    public function star($pre = null)
+    public function star(int $pre = 1): Debug
     {
         $this->_run = true;
-        $pre = $pre ?: debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-        $this->relay('STAR BY HANDer', $pre);//创建起点
+        $this->relay('STAR BY HANDer', $pre + 1);//创建起点
         return $this;
     }
 
 
     /**
      * 停止记录，只是停止记录，不是禁止
-     * @param null $pre
+     * @param int $pre
      * @return $this|null
      */
-    public function stop($pre = null)
+    public function stop(int $pre = 1): Debug
     {
-        if (!$this->_run) return null;
+        if (!$this->_run) return $this;
         if (!empty($this->_node)) {
-            $pre = $pre ?: debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1)[0];
-            $this->relay('STOP BY HANDer', $pre);//创建一个结束点
+            $this->relay('STOP BY HANDer', $pre + 1);//创建一个结束点
         }
         $this->_run = null;
         return $this;
@@ -500,7 +498,7 @@ class Debug
      * @param int $pre
      * @return $this
      */
-    public function mysql_log($val, $pre = 1): Debug
+    public function mysql_log($val, int $pre = 1): Debug
     {
         if ($this->_run === false or !($this->_conf['print']['mysql'] ?? 0)) return $this;
 
