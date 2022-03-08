@@ -97,7 +97,7 @@ class Counter
         if (!$this->conf['mysql_count']) return [];
         if (!$time) $time = time();
         $key = "{$this->conf['mysql_count']}_run_" . date('Y_m_d', $time);
-        $value = $this->redis->hGetAlls($key);
+        $value = $this->redis->hGetAll($key);
         arsort($value);
         $topValue = [];
         $i = 0;
@@ -165,7 +165,7 @@ class Counter
         if (!$this->conf['concurrent']) return [];
         if (!$time) $time = time();
         $key = "{$this->conf['concurrent']}_concurrent_" . date('Y_m_d', $time);
-        $value = $this->redis->hGetAlls($key);
+        $value = $this->redis->hGetAll($key);
         if ($step === 0) return $value;
         $dTime = strtotime(date('Ymd'));
         arsort($value);
@@ -242,7 +242,7 @@ class Counter
         if (!$this->conf['mysql']) return [];
         if (!$time) $time = time();
         $key = "{$this->conf['mysql']}_mysql_" . date('Y_m_d', $time);
-        $value = $this->redis->hGetAlls($key);
+        $value = $this->redis->hGetAll($key);
         if ($step === 0) return $value;
         $dTime = strtotime(date('Ymd'));
         arsort($value);
@@ -335,7 +335,7 @@ class Counter
             $key = "{$conf}_counter_" . date('Y_m_d', $time);
         }
 
-        $all = $this->redis->hGetAlls($key);
+        $all = $this->redis->hGetAll($key);
         if (empty($all)) return ['data' => [], 'action' => []];
 
         $data = [];
