@@ -519,7 +519,7 @@ class Debug
     {
         if (!$this->_run) return $this;
 //        $prev = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
-        $prev = array_reverse(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1))[0] ?? [];
+        $prev = array_reverse(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev))[0] ?? [];
 //        $prev = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1), -1, 1)[0];
 
         if (is_array($prev) and isset($prev['file'])) {
