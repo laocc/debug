@@ -28,6 +28,7 @@ class Counter
         if ($conf['concurrent'] ?? 0) {
             $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), strval(time()), 1);
         }
+
     }
 
 
