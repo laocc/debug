@@ -102,7 +102,7 @@ class Debug
         return $this->save_md_file($array['filename'], $array['data']);
     }
 
-    private function save_md_file(string $file, $content): int
+    private function save_md_file(string $file, $content): bool
     {
         $path = dirname($file);
         $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
@@ -110,7 +110,7 @@ class Debug
         }, $path);
 
         if (is_array($content)) $content = json_encode($content, 256 | 64);
-        return file_put_contents($file, $content, LOCK_EX);
+        return (boolean)file_put_contents($file, $content, LOCK_EX);
     }
 
 
