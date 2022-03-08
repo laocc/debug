@@ -17,13 +17,13 @@ class Debug extends Controller
     public function _init()
     {
         if (is_null($this->_rootPath)) {
-            $this->_rootPath = $this->debug()->root();
+            $this->_rootPath = $this->_dispatcher->_debug->root();
             $this->_rootPath = dirname($this->_rootPath);
         }
         if (is_null($this->_errorPath)) $this->_errorPath = _RUNTIME . '/error';
         if (is_null($this->_warnPath)) $this->_warnPath = _RUNTIME . '/warn';
 
-        $this->debug()->disable();
+        $this->_dispatcher->_debug->disable();
         $this->setViewPath('@' . dirname(__DIR__) . '/views');
         if ($this->_request->isGet()) {
             $this->assign('linkPath', $this->linkPath ?? '');

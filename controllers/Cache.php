@@ -9,7 +9,7 @@ class Cache extends Controller
 
     public function _init()
     {
-        $this->debug()->disable();
+        $this->_dispatcher->_debug->disable();
         $this->setViewPath('@' . dirname(__DIR__) . '/views');
     }
 
