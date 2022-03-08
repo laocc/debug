@@ -4,17 +4,19 @@ declare(strict_types=1);
 namespace esp\debug;
 
 use ErrorException;
-use esp\core\db\Redis;
 use esp\core\Request;
 use function esp\helper\mk_dir;
 
 class Counter
 {
     private $conf;
-    private $redis;
     private $request;
+    /**
+     * @var \Redis
+     */
+    private $redis;
 
-    public function __construct(array $conf, Redis $redis, Request $request = null)
+    public function __construct(array $conf, \Redis $redis, Request $request = null)
     {
         $conf['mysql_log'] = rtrim($conf['mysql_log'] ?? (_RUNTIME . '/mysql'), '/') . '/';
         $conf['mysql_top'] = rtrim($conf['mysql_top'] ?? $conf['mysql_log'], '/') . '/';
