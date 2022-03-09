@@ -32,7 +32,7 @@ class Debug
 
     public function __construct(Dispatcher $dispatcher, array $conf)
     {
-        $this->_dispatcher =& $dispatcher;
+        $this->_dispatcher = &$dispatcher;
         $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词

@@ -20,9 +20,9 @@ class Counter
     {
         $conf['mysql_log'] = rtrim($conf['mysql_log'] ?? (_RUNTIME . '/mysql'), '/') . '/';
         $conf['mysql_top'] = rtrim($conf['mysql_top'] ?? $conf['mysql_log'], '/') . '/';
-        $this->conf = $conf;
-        $this->redis = $redis;
-        $this->request = $request;
+        $this->conf = &$conf;
+        $this->redis = &$redis;
+        $this->request = &$request;
 
         //统计最大并发
         if ($conf['concurrent'] ?? 0) {
