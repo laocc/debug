@@ -90,7 +90,7 @@ class Debug extends Controller
 
         if ($time === 0) $time = time();
         $key = "{$key}_counter_" . date('Y_m_d', $time);
-        $all = $this->_config->Redis()->hGetAlls($key);
+        $all = $this->_config->_Redis->hGetAll($key);
         if (empty($all)) return ['data' => [], 'action' => []];
 
         $data = [];
