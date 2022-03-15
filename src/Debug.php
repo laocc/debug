@@ -77,7 +77,7 @@ class Debug
      * 将节点发来的日志保存到指定目录，或者直接保存
      * 当前只会在master中执行
      *
-     * @return int|string
+     * @return bool|string
      */
     private function transferDebug()
     {
@@ -110,7 +110,16 @@ class Debug
         }, $path);
 
         if (is_array($content)) $content = json_encode($content, 256 | 64);
-        return (boolean)file_put_contents($file, $content, LOCK_EX);
+        $save = (boolean)file_put_contents($file, $content, LOCK_EX);
+
+        if (!is_null($this->_symlink)) {
+            $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
+            if ($fileLink !== $file) {
+                symlink($file, $fileLink);
+            }
+        }
+
+        return $save;
     }
 
 
@@ -177,7 +186,7 @@ class Debug
     /**
      * @param $error
      * @param int $preLev
-     * @return int|string
+     * @return bool|string
      */
     public function error($error, int $preLev = 0)
     {
@@ -202,7 +211,7 @@ class Debug
     /**
      * @param $error
      * @param int $preLev
-     * @return int|string
+     * @return bool|string
      */
     public function warn($error, int $preLev = 0)
     {
@@ -424,7 +433,7 @@ class Debug
      * @param bool $val
      * @return $this
      */
-    public function setPrint(string $type, bool $val = null)
+    public function setPrint(string $type, bool $val = null): Debug
     {
         if ($type === 'null') {
             $this->_conf['print'] = [];
@@ -444,7 +453,7 @@ class Debug
      * 100  =启用
      * @return $this
      */
-    public function disable(int $mt = 0)
+    public function disable(int $mt = 0): Debug
     {
         if ($mt === 100) {
             $this->_run = true;
@@ -548,6 +557,7 @@ class Debug
     }
 
     private $_folder;
+    private $_symlink;
     private $_root;
     private $_path = '';
     private $_file;
@@ -594,6 +604,19 @@ class Debug
         $this->_folder = '/' . _DOMAIN . "/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
         return $this;
     }
+
+    /**
+     * 将正常的日志文件创建一个软链接
+     *
+     * @param string $path
+     * @return $this
+     */
+    public function symlink(string $path): Debug
+    {
+        $this->_symlink = trim($path, '/');
+        return $this;
+    }
+
 
     /**
      * 修改后置目录
