@@ -188,7 +188,7 @@ class Debug
      * @param int $preLev
      * @return bool|string
      */
-    public function error($error, int $preLev = 0)
+    public function error($error, int $preLev = 1)
     {
         $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
         $info = [
@@ -213,7 +213,7 @@ class Debug
      * @param int $preLev
      * @return bool|string
      */
-    public function warn($error, int $preLev = 0)
+    public function warn($error, int $preLev = 1)
     {
         $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
 

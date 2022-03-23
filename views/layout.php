@@ -31,6 +31,9 @@
     <script src="/public/vui/js/progress.js?__RAND__"></script>
     <script src="/public/resource/js/mixin.js?__RAND__"></script>
 
+    <link href="/public/vui/components/index.css?__RAND__" rel="stylesheet" media="all">
+    <script src="/public/vui/components/index.js?__RAND__"></script>
+
     <?= $_css ?>
 </head>
 <body>
