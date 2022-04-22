@@ -64,7 +64,7 @@ class Debug extends Controller
 
         if (is_file($path)) $path = dirname($path);
 
-        if (!is_readable($path)) $this->exit('empty:' . var_export($pathT, true));
+        if (!is_string($path) or !is_readable($path)) $this->exit('empty:' . var_export($pathT, true));
         $file = $this->folder($path);
         ksort($file[0]);
         ksort($file[1]);
@@ -186,10 +186,9 @@ class Debug extends Controller
     {
         if (!$file) $file = $_GET['file'] ?? '';
         $path = realpath(urldecode($file));
-//        if (stripos($path, $this->_rootPath) !== 0) $this->exit("无权限查看该文件:{$path}");
+        if ($path === false) $this->exit("文件不存在：" . urldecode($file));
         if (!is_readable($path)) $this->exit($path . '文件不存在');
 
-//        $this->concat(false);
         $this->css('/public/vui/css/markdown.css');
         $html = Markdown::html(file_get_contents($path), false);
         $this->assign('html', $html);
@@ -376,14 +375,20 @@ class Debug extends Controller
         return ['success' => 1, 'message' => "共删除了{$c}个相同错误信息"];
     }
 
-    public function error_delAjax($file, $warn)
+    /**
+     * @param $file
+     * @param $warn
+     * @return array
+     */
+    public function error_delAjax($file, $warn): array
     {
         $file = urldecode($file);
         $path = $warn ? $this->_warnPath : $this->_errorPath;
         $filename = root($path . "/{$file}");
-        if (!is_readable($filename)) return "{$file} not exists.";
-        if (stripos($filename, $path) !== 0) return '非Debug目录禁止删除';
+        if (!is_readable($filename)) return ['success' => 0, 'message' => "{$file} not exists."];
+        if (stripos($filename, $path) !== 0) return ['success' => 0, 'message' => "非Debug目录禁止删除"];
         unlink($filename);
+        return ['success' => 1, 'message' => '删除成功'];
     }
 
     public function error_viewAction($file, $warn)
