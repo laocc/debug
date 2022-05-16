@@ -38,7 +38,6 @@ class Counter
      * @param string $action
      * @param string $sql
      * @param int|null $traceLevel
-     * @throws ErrorException
      */
     public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
