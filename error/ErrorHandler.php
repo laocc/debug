@@ -36,7 +36,7 @@ class ErrorHandler
             header("Status: 500 Internal Server Error", true);
             echo("[{$err[0]}]{$err[1]}");
         });
-        set_exception_handler(function (EspError $error) {
+        set_exception_handler(function (Error $error) {
             header("Status: 500 Internal Server Error", true);
             echo("[{$error->getCode()}]{$error->getMessage()}");
         });
@@ -65,7 +65,7 @@ class ErrorHandler
             if ($this->dispatcher->ignoreError($errFile, $errLine, true)) return;
 
             $prev = ['message' => $errStr, 'code' => $errNo, 'file' => $errFile, 'line' => $errLine];
-            $error = new EspError($prev);
+            $error = new Error($prev);
 
             $err = array();
             $err['err_type'] = 'register_handler';
@@ -201,7 +201,7 @@ class ErrorHandler
          * 处理类型：
          * 1，调用了不存在的函数；
          * 2，函数参数不对；
-         * 3，throw new EspError('抛出的异常');
+         * 3，throw new Error('抛出的异常');
          */
         set_exception_handler($handler_exception);
     }
@@ -226,7 +226,6 @@ class ErrorHandler
      * @param array $prev
      * @param string $path
      * @param string $filename
-     * @throws \esp\helper\library\Error
      */
     private function error(array $error, array $prev, string $path, string $filename)
     {
