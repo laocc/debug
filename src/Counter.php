@@ -134,8 +134,9 @@ class Counter
         //记录各控制器请求计数
         $counter = $this->conf['counter'];
 
+        //$this->request->virtual
         $key = sprintf('%s/%s/%s/%s/%s/%s', date('H'),
-            $this->request->method, $this->request->virtual, $this->request->module ?: 'auto',
+            $this->request->method, _VIRTUAL, $this->request->module ?: 'auto',
             $this->request->controller, $this->request->action);
         if (is_array($counter)) {
             $counter += ['key' => 'DEBUG', 'params' => 0];
