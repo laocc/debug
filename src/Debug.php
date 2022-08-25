@@ -3,8 +3,11 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
+use Error;
+use DirectoryIterator;
 use esp\core\Dispatcher;
 use esp\http\Http;
+use function iconv_strlen;
 
 class Debug
 {
@@ -22,26 +25,40 @@ class Debug
     private $_conf;
     private $_errorText;
     private $_ROOT_len = 0;
-    private $_rpc = [];
+    private $_rpc;
     private $_transfer_uri = '/_esp_debug_transfer';
     private $_transfer_path = '';
-    private $_zip = 0;
+    private $_zip;
     private $_mysql_run = 0;
     private $_dispatcher;
-
+    public $mode;
 
     public function __construct(Dispatcher $dispatcher, array $conf)
     {
         $this->_dispatcher = &$dispatcher;
-        $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
+        $this->_conf = $conf + [
+                'path' => _RUNTIME,
+                'mode' => 'cgi',
+                'run' => false,
+                'host' => [],
+                'counter' => false];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
         $this->_zip = intval($this->_conf['zip'] ?? 0);
         $this->mode = $this->_conf['mode'];
+        if ($this->mode === 'none') return;
 
-        if (defined('_RPC')) {
-            $this->_rpc = _RPC;
+        /**
+         * mode:
+         * cgi:     直接保存，并不是在shutdown中执行，所以如果报错，前端可见
+         * shutdown:程序结束时直接保存在本机，在shutdown中执行，主从模式下不适用，因为日志会被分散
+         * rpc:     发送到RPC接口，只发生在从服务器中
+         * transfer:用本地文件中转，由后台转存到实际目录，这只发生在主服务器的RPC中
+         */
+        if (isset($conf['rpc'])) $this->_rpc = $conf['rpc'];
+        else if (defined('_RPC')) $this->_rpc = _RPC;
 
+        if ($this->_rpc) {
             $this->isMaster = is_file(_RUNTIME . '/master.lock');
 
             //当前是主服务器，还继续判断保存方式
@@ -148,14 +165,14 @@ class Debug
      */
     public static function move(bool $show = false, string $path = null)
     {
-        if (!_CLI) throw new \Error('debug->move() 只能运行于CLI环境');
+        if (!_CLI) throw new Error('debug->move() 只能运行于CLI环境');
 
         if (is_null($path)) $path = _RUNTIME . '/debug/move';
         $time = 0;
 
         reMove:
         $time++;
-        $dir = new \DirectoryIterator($path);
+        $dir = new DirectoryIterator($path);
         $array = array();
         foreach ($dir as $i => $f) {
             if ($i > 100) break;
@@ -175,7 +192,7 @@ class Debug
                 $path = dirname($move);
                 if (!file_exists($path)) @mkdir($path, 0740, true);
                 rename("{$path}/{$file}", $move);
-            } catch (\Error $e) {
+            } catch (Error $e) {
                 print_r(['moveDebug' => $e]);
             }
         }
@@ -239,6 +256,8 @@ class Debug
      */
     public function save_debug_file(string $filename, string $data)
     {
+        if ($this->mode === 'none') return false;
+
         //这是从Error中发来的保存错误日志
         if ($filename[0] !== '/') {
             $path = $this->_conf['error'] ?? (_RUNTIME . '/error');
@@ -313,6 +332,7 @@ class Debug
     {
         if (empty($this->_node)) return 'empty node';
         else if ($this->_run === false) return 'debug not star or be stop';
+        else if ($this->mode === 'none') return 'debug not save';
 
         $filename = $this->filename();
         if (empty($filename)) return 'null filename';
@@ -349,7 +369,7 @@ class Debug
 
         if (!empty($this->_value)) {
             $data[] = "\n## 程序附加\n```\n";
-            foreach ($this->_value as $k => &$v) $data[] = " - {$k}:\t{$v}\n";
+            foreach ($this->_value as $k => $v) $data[] = " - {$k}:\t{$v}\n";
             $data[] = "```\n";
         }
 
@@ -361,7 +381,7 @@ class Debug
         $data[] = "" . (str_repeat('-', 100)) . "\n";
         //具体监控点
         $len = min($this->_node_len + 3, 50);
-        foreach ($this->_node as $i => &$row) {
+        foreach ($this->_node as $i => $row) {
             $data[] = "  {$row['t']}\t{$row['m']}\t{$row['n']}\t" . sprintf("%-{$len}s", $row['g']) . "\t{$row['f']}\n";
         }
 
@@ -527,25 +547,23 @@ class Debug
     public function relay($msg, int $preLev = 0): Debug
     {
         if (!$this->_run) return $this;
+        else if ($this->mode === 'none') return $this;
+
         $prev = [];
         if ($preLev >= 0) {
             $prev = array_reverse(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev))[0] ?? [];
-//        $prev = array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev ), -1, 1)[0];
         }
 
+        $file = null;
         if (is_array($prev) and isset($prev['file'])) {
             $file = substr($prev['file'], $this->_ROOT_len) . " [{$prev['line']}]";
-        } else {
-            $file = null;
         }
 
         if (is_array($msg)) $msg = "\n" . print_r($msg, true);
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
-        elseif (is_null($msg)) $msg = "\n" . var_export($msg, true);
-        elseif (is_bool($msg)) $msg = "\n" . var_export($msg, true);
-        elseif (!is_string($msg)) $msg = strval($msg);
+        elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
 
-        $this->_node_len = max(\iconv_strlen($msg), $this->_node_len);
+        $this->_node_len = max(iconv_strlen($msg), $this->_node_len);
         $nowMemo = memory_get_usage();
         $time = sprintf($this->_print_format, (microtime(true) - $this->prevTime) * 1000);
         $memo = sprintf($this->_print_format, ($nowMemo - $this->memory) / 1024);
