@@ -41,6 +41,9 @@ class Counter
      */
     public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
+        $key = $this->conf['mysql'] ?? null;
+        if (!$key) return;
+
         register_shutdown_function(function (string $action, string $sql, int $traceLevel = null) {
 
             $key = $this->conf['mysql'] ?? null;
