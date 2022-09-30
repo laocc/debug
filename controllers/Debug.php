@@ -453,16 +453,17 @@ class Debug extends Controller
 
     }
 
-    public function resourceAjax()
+    public function cacheAjax($action, $value): array
     {
-        $this->_redis->set('resourceRand', time() + mt_rand());
-        return ['success' => 1, 'message' => "重置成功"];
-    }
-
-    public function flushAjax($all)
-    {
-        $this->getConfig()->flush(intval($all));
-        return ['success' => 1, 'message' => "清空成功"];
+        switch ($action) {
+            case 'resource':
+                $this->_redis->set('resourceRand', time() + mt_rand());
+                return ['success' => 1, 'message' => "重置成功"];
+            case 'flush':
+                $this->getConfig()->flush(intval($value));
+                return ['success' => 1, 'message' => "清空成功"];
+        }
+        return [];
     }
 
 }
