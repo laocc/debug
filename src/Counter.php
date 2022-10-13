@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace esp\debug;
 
 use Redis;
-use ErrorException;
+use esp\error\Error;
 use esp\core\Request;
 use function esp\helper\mk_dir;
 
@@ -333,7 +333,7 @@ class Counter
         $conf = $this->conf['counter'];
         if (!$conf) return [];
         if (is_array($conf)) {
-            if (!isset($conf['key'])) throw new \Error("counter.key未定义");
+            if (!isset($conf['key'])) throw new Error("counter.key未定义");
             $key = "{$conf['key']}_counter_" . date('Y_m_d', $time);
         } else {
             $key = "{$conf}_counter_" . date('Y_m_d', $time);
