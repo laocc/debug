@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace esp\debug;
 
-use Error;
 use DirectoryIterator;
+use esp\error\Error;
 use esp\core\Dispatcher;
 use esp\http\Http;
 use function iconv_strlen;
