@@ -71,7 +71,7 @@ class Debug
         else if (defined('_RPC')) $this->_rpc = _RPC;
 
         //当前是主服务器，还继续判断保存方式
-        if ($this->_rpc and is_file(_RUNTIME . '/master.lock')) {
+        if (isset($this->_rpc) and is_file(_RUNTIME . '/master.lock')) {
             if ($this->mode === 'rpc') $this->mode = $conf['master'] ?? 'shutdown';
             if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
 
@@ -283,7 +283,7 @@ class Debug
             if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
             return $this->save_md_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data);
 
-        } else if ($this->mode === 'rpc' and $this->_rpc) {
+        } else if ($this->mode === 'rpc' and isset($this->_rpc)) {
 
             /**
              * 发到RPC，写入move专用目录，然后由后台移到实际目录
