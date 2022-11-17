@@ -7,9 +7,8 @@ use esp\error\Error;
 
 class Transfer
 {
-    private $_transfer_uri = '/_esp_debug_transfer';
-    private $_transfer_path = '/tmp/_esp_debug_transfer';
-
+    private string $_transfer_uri = '/_esp_debug_transfer';
+    private string $_transfer_path = '/tmp/_esp_debug_transfer';
 
     public function __construct(bool $transfer)
     {
@@ -54,12 +53,12 @@ class Transfer
      * 因为在大并发时，创建新目录的速度可能跟不上系统请求速度，有时候发生目录已存在的错误
      * @param bool $show
      * @param string|null $path
+     * @throws Error
      */
     public function save(string $path, bool $show = false)
     {
         if (!_CLI) throw new Error('debug->Transfer() 只能运行于CLI环境');
 
-        if (is_null($path)) $path = _RUNTIME . '/debug/move';
         $time = 0;
 
         reMove:
@@ -94,15 +93,20 @@ class Transfer
     }
 
 
-    private function mk_dir(string $file): bool
+    private function mk_dir(string $file): void
     {
-        if (!$file) return false;
+        if (!$file) {
+            return;
+        }
         $path = dirname($file);
         try {
-            if (!is_dir($path)) return @mkdir($path, 0740, true);
-            return true;
+            if (!is_dir($path)) {
+                @mkdir($path, 0740, true);
+                return;
+            }
+            return;
         } catch (Error $e) {
-            return false;
+            return;
         }
     }
 

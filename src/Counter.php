@@ -10,12 +10,9 @@ use function esp\helper\mk_dir;
 
 class Counter
 {
-    private $conf;
-    private $request;
-    /**
-     * @var Redis
-     */
-    private $redis;
+    private array $conf;
+    private Request $request;
+    private Redis $redis;
 
     public function __construct(array $conf, Redis $redis, Request $request = null)
     {
@@ -38,6 +35,7 @@ class Counter
      * @param string $action
      * @param string $sql
      * @param int|null $traceLevel
+     * @throws Error
      */
     public function recodeMysql(string $action, string $sql, int $traceLevel = null)
     {
@@ -95,7 +93,7 @@ class Counter
 
     }
 
-    public function getTopMysql(int $time = 0, int $limit = 100, int $minRun = 1)
+    public function getTopMysql(int $time = 0, int $limit = 100, int $minRun = 1): array
     {
         if (!$this->conf['mysql_count']) return [];
         if (!$time) $time = time();
@@ -164,7 +162,7 @@ class Counter
      *      若=0则不处理直接返回原始数据
      * @return array
      */
-    public function getConcurrent(int $time = 0, int $step = 1)
+    public function getConcurrent(int $time = 0, int $step = 1): array
     {
         if (!$this->conf['concurrent']) return [];
         if (!$time) $time = time();
@@ -326,8 +324,9 @@ class Counter
      * @param int $time
      * @param bool|null $method
      * @return array|array[]
+     * @throws Error
      */
-    public function getCounter(int $time = 0, bool $method = null)
+    public function getCounter(int $time = 0, bool $method = null): array
     {
         if ($time === 0) $time = time();
         $conf = $this->conf['counter'];

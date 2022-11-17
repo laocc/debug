@@ -14,7 +14,6 @@
     <link rel="stylesheet" href="/public/vui/css/element.patch.css" media="all">
     <link rel="stylesheet" href="/public/vui/css/patch.css?__RAND__" media="all">
 
-    <script>const scriptHost = '/public/vui';</script>
     <script src="/public/vui/node_modules/jquery/dist/jquery.min.js"></script>
     <script src="/public/vui/node_modules/vue/dist/vue.js"></script>
     <script src="/public/vui/node_modules/http-vue-loader/src/httpVueLoader.js"></script>
@@ -31,8 +30,8 @@
     <script src="/public/vui/js/progress.js?__RAND__"></script>
     <script src="/public/resource/js/mixin.js?__RAND__"></script>
 
-    <link href="/public/vui/components/index.css?__RAND__" rel="stylesheet" media="all">
     <script src="/public/vui/components/index.js?__RAND__"></script>
+    <link href="/public/vui/components/index.css?__RAND__" rel="stylesheet" media="all">
 
     <?= $_css ?>
 </head>

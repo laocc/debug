@@ -11,27 +11,39 @@ use function iconv_strlen;
 
 class Debug
 {
-    private $prevTime;
-    private $isMaster;
-    private $memory;
-    private $_run;
-    private $_star;
-    private $_time;
-    private $_value = array();
-    private $_print_format = '% 9.3f';
-    private $_node = array();
-    private $_node_len = 0;
-    private $_mysql = array();
-    private $_conf;
-    private $_errorText;
-    private $_ROOT_len = 0;
-    private $_rpc;
-    private $_transfer_uri = '/_esp_debug_transfer';
-    private $_transfer_path = '';
-    private $_zip;
-    private $_mysql_run = 0;
-    private $_dispatcher;
-    public $mode;
+    private Dispatcher $_dispatcher;
+    private float $prevTime;
+    private int $memory;
+    private bool $_run;
+    private array $_star;
+    private float $_time;
+    private array $_value = array();
+    private string $_print_format = '% 9.3f';
+    private array $_node = array();
+    private int $_node_len = 0;
+    private array $_mysql = array();
+    private array $_conf;
+    private string $_errorText;
+    private array $_rpc;
+    private string $_transfer_uri = '/_esp_debug_transfer';
+    private string $_transfer_path = '';
+    private int $_zip = 0;//压缩级别
+    private int $_mysql_run = 0;//mysql执行了多少次
+
+    private string $_folder;
+    private string $_symlink;
+    private string $_root;
+    private int $_ROOT_len = 0;
+
+    private string $_path = '';
+    private string $_file;
+    private string $_filename;
+    private bool $_hasError = false;
+
+    private array $router = [];
+    private array $response = ['type' => null, 'display' => null];
+
+    public string $mode;
 
     public function __construct(Dispatcher $dispatcher, array $conf)
     {
@@ -58,19 +70,15 @@ class Debug
         if (isset($conf['rpc'])) $this->_rpc = $conf['rpc'];
         else if (defined('_RPC')) $this->_rpc = _RPC;
 
-        if ($this->_rpc) {
-            $this->isMaster = is_file(_RUNTIME . '/master.lock');
+        //当前是主服务器，还继续判断保存方式
+        if ($this->_rpc and is_file(_RUNTIME . '/master.lock')) {
+            if ($this->mode === 'rpc') $this->mode = $conf['master'] ?? 'shutdown';
+            if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
 
-            //当前是主服务器，还继续判断保存方式
-            if ($this->isMaster) {
-                if ($this->mode === 'rpc') $this->mode = $conf['master'] ?? 'shutdown';
-                if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
-
-                //保存节点服务器发来的日志
-                if (_VIRTUAL === 'rpc' && _URI === $this->_transfer_uri) {
-                    $save = $this->transferDebug();
-                    exit(getenv('SERVER_ADDR') . ";Length={$save};Time:" . microtime(true));
-                }
+            //保存节点服务器发来的日志
+            if (_VIRTUAL === 'rpc' && _URI === $this->_transfer_uri) {
+                $save = $this->transferDebug();
+                exit(getenv('SERVER_ADDR') . ";Length={$save};Time:" . microtime(true));
             }
         }
 
@@ -93,6 +101,7 @@ class Debug
     /**
      * 将节点发来的日志保存到指定目录，或者直接保存
      * 当前只会在master中执行
+     * 也就是本类中 save_debug_file 方法发出的数据
      *
      * @return bool|string
      */
@@ -102,13 +111,15 @@ class Debug
         if (empty($input)) return 'null';
 
         $array = json_decode($input, true);
+        if (!isset($array['data'])) $array['data'] = '未发送data数据';
+
         if (empty($array['data'])) $array['data'] = 'NULL Data';
         else {
             $array['data'] = base64_decode($array['data']);
             if (!$this->_zip) $array['data'] = gzuncompress($array['data']);
         }
 
-        if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
+//        if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
 
         //临时中转文件
         if ($this->mode === 'transfer') {
@@ -129,7 +140,7 @@ class Debug
         if (is_array($content)) $content = json_encode($content, 256 | 64);
         $save = (boolean)file_put_contents($file, $content, LOCK_EX);
 
-        if (!is_null($this->_symlink)) {
+        if (isset($this->_symlink)) {
             $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
             if ($fileLink !== $file) {
                 symlink($file, $fileLink);
@@ -162,6 +173,7 @@ class Debug
      *
      * @param bool $show
      * @param string|null $path
+     * @throws Error
      */
     public static function move(bool $show = false, string $path = null)
     {
@@ -266,8 +278,6 @@ class Debug
 
         if ($this->_zip and $filename[-1] !== 'z') $filename .= 'z';
 
-        $send = null;
-
         if ($this->mode === 'transfer') {
             //当前发生在master中，若有定义transfer，则直接发到中转目录
             if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
@@ -296,9 +306,6 @@ class Debug
 
         return $this->save_md_file($filename, $data);
     }
-
-    private $router = [];
-    private $response = ['type' => null, 'display' => null];
 
     public function setRouter(array $request): void
     {
@@ -391,7 +398,7 @@ class Debug
         $total = sprintf($this->_print_format, (memory_get_usage()) / 1024);
         $data[] = "  {$time}\t{$memo}\t{$total}\t进程启动到Debug结束时的消耗总量\n```\n";
 
-        if (!empty($this->_errorText)) {
+        if (isset($this->_errorText)) {
             $data[] = "\n\n##程序出错1：\n```\n{$this->_errorText}\n```\n";
         }
         $e = error_get_last();
@@ -443,6 +450,11 @@ class Debug
         return $this->save_debug_file($filename, implode($data));
     }
 
+    public function setErrorText(string $text): Debug
+    {
+        $this->_errorText = $text;
+        return $this;
+    }
 
     /**
      * 设置是否记录几个值
@@ -508,7 +520,7 @@ class Debug
         if (!empty($this->_node)) {
             $this->relay('STOP BY HANDer', $pre + 1);//创建一个结束点
         }
-        $this->_run = null;
+        $this->_run = false;
         return $this;
     }
 
@@ -574,14 +586,6 @@ class Debug
         return $this;
     }
 
-    private $_folder;
-    private $_symlink;
-    private $_root;
-    private $_path = '';
-    private $_file;
-    private $_filename;
-    private $_hasError = false;
-
     /**
      * 设置或读取debug文件保存的根目录
      * @param string|null $path
@@ -590,7 +594,7 @@ class Debug
     public function root(string $path = null)
     {
         if (is_null($path)) {
-            if (is_null($this->_root))
+            if (!isset($this->_root))
                 return $this->_root = str_replace(
                     ['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}'],
                     [_RUNTIME, _ROOT, _VIRTUAL, date('Y_m_d')],
@@ -613,7 +617,7 @@ class Debug
         if (!empty($m)) $m = strtoupper($m) . "/";
 
         if (is_null($path)) {
-            if (is_null($this->_folder)) {
+            if (!isset($this->_folder)) {
                 return $this->_folder = '/' . _DOMAIN . "/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
             }
             return $this->_folder;
@@ -678,7 +682,7 @@ class Debug
     public function file(string $file = null)
     {
         if (is_null($file)) {
-            if (is_null($this->_file)) {
+            if (!isset($this->_file)) {
                 list($s, $c) = explode('.', microtime(true) . '.0');
                 return date($this->_conf['rules']['filename'], intval($s)) . "_{$c}_" . mt_rand(100, 999);
             }
@@ -699,7 +703,7 @@ class Debug
         if (empty($this->router['controller'])) return '';
         if ($file) return $this->file($file);
 
-        if (is_null($this->_filename)) {
+        if (!isset($this->_filename)) {
             $root = $this->root();
             $folder = $this->folder();
             $file = $this->file();
