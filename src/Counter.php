@@ -128,8 +128,9 @@ class Counter
     /**
      * 记录各控制器请求计数 若是非法请求，不记录
      */
-    public function recodeCounter()
+    public function recodeCounter(): void
     {
+        if (!isset($this->request)) return;
         if (!$this->request->exists or !$this->conf['counter']) return;
 
         //记录各控制器请求计数
