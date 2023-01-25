@@ -266,7 +266,7 @@ class ErrorHandler
         $info = [
             'time' => date('Y-m-d H:i:s'),
             'HOST' => getenv('HTTP_HOST'),
-            'Url' => _HTTP_ . _DOMAIN . _URI,
+            'Url' => _URL,
             'Debug' => !is_null($this->debug) ? $this->debug->filename() : '',
             'errKey' => $md5Key,
             'Error' => $error,

@@ -223,7 +223,7 @@ class Debug
         $info = [
             'time' => date('Y-m-d H:i:s'),
             'HOST' => getenv('SERVER_ADDR'),
-            'Url' => _HTTP_ . _DOMAIN . _URI,
+            'Url' => _URL,
             'Referer' => getenv("HTTP_REFERER"),
             'Debug' => $this->filename(),
             'Trace' => $tract,
@@ -249,7 +249,7 @@ class Debug
         $info = [
             'time' => date('Y-m-d H:i:s'),
             'HOST' => getenv('SERVER_ADDR'),
-            'Url' => _HTTP_ . _DOMAIN . _URI,
+            'Url' => _URL,
             'Referer' => getenv("HTTP_REFERER"),
             'Debug' => $this->filename(),
             'Trace' => $tract,
