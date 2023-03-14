@@ -37,24 +37,22 @@ class Counter
      * @param int|null $traceLevel
      * @throws Error
      */
-    public function recodeMysql(string $action, string $sql, int $traceLevel = null)
+    public function recodeMysql(string $action, string $sql, int $traceLevel)
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
+        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
+        $trace = $trace[$traceLevel] ?? [];
 
-        register_shutdown_function(function (string $action, string $sql, int $traceLevel = null) {
+        register_shutdown_function(function (string $action, string $sql, array $trace) {
 
             $key = $this->conf['mysql'] ?? null;
             if (!$key) return;
             $time = time();
             $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
-            if (is_null($traceLevel)) return;
 
             $logPath = strval($this->conf['mysql_log'] ?? '');
             if ($logPath) {
-                $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
-                $trace = $trace[$traceLevel] ?? [];
-
                 $log = [
                     'time' => date('H:i:s', $time),
                     'sql' => $sql,
@@ -64,7 +62,6 @@ class Counter
                 ];
                 $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
                 mk_dir($fil);
-
                 file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
             }
 
@@ -89,7 +86,7 @@ class Counter
                 $this->redis->hIncrBy($key . '_run_' . date('Y_m_d', $time), $sqlMd5, 1);
             }
 
-        }, $action, $sql, $traceLevel);
+        }, $action, $sql, $trace);
 
     }
 
