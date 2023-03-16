@@ -27,7 +27,7 @@ class Cache extends Controller
 
     public function resourceAjax()
     {
-        $this->_redis->set('resourceRand', time() + mt_rand());
+        $this->_redis->set(_UNIQUE_KEY . '_RESOURCE_RAND_', time() + mt_rand());
         return ['success' => 1, 'message' => "重置成功"];
     }
 
