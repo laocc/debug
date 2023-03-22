@@ -11,8 +11,9 @@ use function esp\helper\displayState;
 
 class ErrorHandler
 {
-    private $restrain = false;
-    private $dispatcher;
+    private bool $restrain = false;
+    private Dispatcher $dispatcher;
+    private Debug $debug;
 
     public function __construct(Dispatcher $dispatcher, array $option)
     {
@@ -206,10 +207,6 @@ class ErrorHandler
         set_exception_handler($handler_exception);
     }
 
-    /**
-     * @var Debug $debug
-     */
-    private $debug;
 
     /**
      * 由于error的创建要早于debug，所以要在debug创建成功时，送入自己

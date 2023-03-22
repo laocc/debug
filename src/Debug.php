@@ -231,7 +231,7 @@ class Debug
             'Server' => $_SERVER,
         ];
         if (is_array($error)) $error = json_encode($error, 256 | 64 | 128);
-        $this->relay("[red;{$error}]");
+        $this->relay("[red;{$error}]", $preLev + 1);
         $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['error'] ?? (_RUNTIME . '/error')];
         $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
         return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
@@ -554,9 +554,10 @@ class Debug
      *
      * @param $msg
      * @param int $preLev 调用的位置，若是通过中间件调用，请在调用此函数时提供下面的内容：
+     * @param array|null $prevTrace
      * @return $this|bool
      */
-    public function relay($msg, int $preLev = 0): Debug
+    public function relay($msg, int $preLev = 0, array $prevTrace = null): Debug
     {
         if (!$this->_run) return $this;
         else if ($this->mode === 'none') return $this;
@@ -565,6 +566,7 @@ class Debug
         if ($preLev >= 0) {
             $prev = array_reverse(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev))[0] ?? [];
         }
+        if (empty($prev) and !empty($prevTrace)) $prev = $prevTrace;
 
         $file = null;
         if (is_array($prev) and isset($prev['file'])) {
