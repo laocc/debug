@@ -132,13 +132,20 @@ class Debug
 
     private function save_md_file(string $file, $content): bool
     {
+        if (is_array($content)) $content = json_encode($content, 256 | 64);
+
         $path = dirname($file);
+        $tryOnce = true;
+        tryOnce:
         $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
             if (!file_exists($path)) @mkdir($path, 0740, true);
         }, $path);
 
-        if (is_array($content)) $content = json_encode($content, 256 | 64);
-        $save = (boolean)file_put_contents($file, $content, LOCK_EX);
+        $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
+        if ($save === false && $tryOnce) {
+            $tryOnce = false;
+            goto tryOnce;
+        }
 
         if (isset($this->_symlink)) {
             $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
