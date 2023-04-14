@@ -371,9 +371,10 @@ class Debug
         $data[] = " - SaveBy:\t{$pre}\n";
         $data[] = " - METHOD:\t{$rq['method']}\n";
         $data[] = " - GET_URL:\t" . (defined('_URL') ? _URL : '') . "\n";
-        $data[] = " - SERV_IP:\t" . ($_SERVER['HTTP_X_SERV_IP'] ?? ($_SERVER['SERVER_ADDR'] ?? '')) . "\n";
+        $data[] = " - SERV_IP:\t" . ($_SERVER['SERVER_ADDR'] ?? '') . "\n";
         $data[] = " - USER_IP:\t" . ($_SERVER['REMOTE_ADDR'] ?? '') . "\n";
         $data[] = " - REAL_IP:\t" . _CIP . "\n";
+        if (isset($_SERVER['HTTP_X_SERV_IP'])) $data[] = " - AGENT_IP:\t" . $_SERVER['HTTP_X_SERV_IP'] . "\n";
         $data[] = " - DATETIME:\t" . date('Y-m-d H:i:s', intval($this->_time)) . "\n";
         $data[] = " - PHP_VER:\t" . phpversion() . "\n";
         $data[] = " - AGENT:\t" . ($_SERVER['HTTP_USER_AGENT'] ?? '') . "\n";
