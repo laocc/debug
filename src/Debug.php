@@ -550,9 +550,7 @@ class Debug
     public function mysql_log($val, int $pre = 1): Debug
     {
         if ($this->_run === false or !($this->_conf['print']['mysql'] ?? 0)) return $this;
-
         $this->relay("Mysql[" . (++$this->_mysql_run) . '] = ' . print_r($val, true) . str_repeat('-', 10) . '>', $pre);
-
         return $this;
     }
 
