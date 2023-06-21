@@ -34,60 +34,83 @@ class Counter
      * 记录mysql并发
      * @param string $action
      * @param string $sql
-     * @param int|null $traceLevel
-     * @throws Error
+     * @param int $traceLevel
      */
-    public function recodeMysql(string $action, string $sql, int $traceLevel)
+    public function recodeMysql(string $action, string $sql, int $traceLevel): void
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
-        $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, ($traceLevel + 1));
-        $trace = $trace[$traceLevel] ?? [];
+        $trace = $this->getRealTrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $traceLevel - 1);
 
         register_shutdown_function(function (string $action, string $sql, array $trace) {
-
-            $key = $this->conf['mysql'] ?? null;
-            if (!$key) return;
-            $time = time();
-            $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
-
-            $logPath = strval($this->conf['mysql_log'] ?? '');
-            if ($logPath) {
-                $log = [
-                    'time' => date('H:i:s', $time),
-                    'sql' => $sql,
-                    'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
-                    'line' => $trace['line'] ?? '0',
-                    'url' => _URL,
-                ];
-                $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
-                mk_dir($fil);
-                file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
-            }
-
-            $key = $this->conf['mysql_count'] ?? null;
-            if ($key) {
-                $log = [
-                    'sql' => preg_replace(['/\:\w+/', '/\([\d\.]+,[\d\.]+\)/', '/\d{2,}/'], '%s', $sql),
-                    'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
-                    'line' => $trace['line'] ?? '0',
-                ];
-                if (substr($log['sql'], 0, 3) === 'Hit') {
-                    $sqlMd5 = md5($log['sql']);
-                } else {
-                    $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
-                }
-                $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $sqlMd5 . '.log';
-                mk_dir($fil);
-                if (!is_file($fil)) {
-                    file_put_contents($fil, json_encode($log, 256 | 64 | 128));
-                }
-
-                $this->redis->hIncrBy($key . '_run_' . date('Y_m_d', $time), $sqlMd5, 1);
-            }
-
+            $this->saveRecodeMysql($action, $sql, $trace);
         }, $action, $sql, $trace);
+    }
 
+    /**
+     * 查询实际调用位置
+     * @param array $traces
+     * @param int $lev
+     * @return array
+     */
+    private function getRealTrace(array $traces, int $lev): array
+    {
+        $inApp = false;
+        $vendor = _ROOT . '/vendor';
+        foreach ($traces as $l => $trace) {
+            if ($lev === $l) return $trace;
+//            $inVendor = str_starts_with($trace['file'], $vendor);
+            $inVendor = (strpos($trace['file'], $vendor) === 0);
+            if (!$inVendor) {
+                if ($inApp) return $trace;
+                $inApp = true;
+            }
+        }
+        return $traces[-1] ?? [];
+    }
+
+
+    private function saveRecodeMysql(string $action, string $sql, array $trace): void
+    {
+        $key = $this->conf['mysql'] ?? null;
+        if (!$key) return;
+        $time = time();
+        $this->redis->hIncrBy("{$key}_mysql_" . date('Y_m_d', $time), $action . '.' . strval($time), 1);
+
+        $logPath = strval($this->conf['mysql_log'] ?? '');
+        if ($logPath) {
+            $log = [
+                'time' => date('H:i:s', $time),
+                'sql' => $sql,
+                'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
+                'line' => $trace['line'] ?? '0',
+                'url' => _URL,
+            ];
+            $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
+            mk_dir($fil);
+            file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
+        }
+
+        $key = $this->conf['mysql_count'] ?? null;
+        if ($key) {
+            $log = [
+                'sql' => preg_replace(['/\:\w+/', '/\([\d\.]+,[\d\.]+\)/', '/\d{2,}/'], '%s', $sql),
+                'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
+                'line' => $trace['line'] ?? '0',
+            ];
+            if (strpos($log['sql'], 'Hit') === 0) {
+                $sqlMd5 = md5($log['sql']);
+            } else {
+                $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
+            }
+            $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $sqlMd5 . '.log';
+            mk_dir($fil);
+            if (!is_file($fil)) {
+                file_put_contents($fil, json_encode($log, 256 | 64 | 128));
+            }
+
+            $this->redis->hIncrBy($key . '_run_' . date('Y_m_d', $time), $sqlMd5, 1);
+        }
     }
 
     public function getTopMysql(int $time = 0, int $limit = 100, int $minRun = 1): array
