@@ -13,6 +13,7 @@ class Counter
     private array $conf;
     private Request $request;
     private Redis $redis;
+    private array $recode = [];
 
     public function __construct(array $conf, Redis $redis, Request $request = null)
     {
@@ -27,6 +28,9 @@ class Counter
             $redis->hIncrBy($conf['concurrent'] . '_concurrent_' . date('Y_m_d'), strval(time()), 1);
         }
 
+        register_shutdown_function(function () {
+            $this->shutdownSave();
+        });
     }
 
 
@@ -42,9 +46,11 @@ class Counter
         if (!$key) return;
         $trace = $this->getRealTrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $traceLevel - 1);
 
-        register_shutdown_function(function (string $action, string $sql, array $trace) {
-            $this->saveRecodeMysql($action, $sql, $trace);
-        }, $action, $sql, $trace);
+        $this->recode[] = [$action, $sql, $trace];
+
+//        register_shutdown_function(function (string $action, string $sql, array $trace) {
+//            $this->saveRecodeMysql($action, $sql, $trace);
+//        }, $action, $sql, $trace);
     }
 
     /**
@@ -69,6 +75,14 @@ class Counter
         return $traces[-1] ?? [];
     }
 
+    private function shutdownSave()
+    {
+        if (empty($this->recode)) return;
+        $this->redis->select($this->conf['_redis_index'] ?? 0);
+        foreach ($this->recode as $rec) {
+            $this->saveRecodeMysql(...$rec);
+        }
+    }
 
     private function saveRecodeMysql(string $action, string $sql, array $trace): void
     {
