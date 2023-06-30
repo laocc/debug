@@ -138,6 +138,7 @@ class ErrorHandler
 
             $err = array();
             $err['err_type'] = 'handler_exception';
+            $err['err_file'] = __FILE__ . __LINE__;
             $err['success'] = 0;
             $err['time'] = date('Y-m-d H:i:s');
             $err['error'] = $error->getCode() ?: 500;
