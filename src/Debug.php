@@ -579,6 +579,7 @@ class Debug
             $file = substr($prev['file'], $this->_ROOT_len) . " [{$prev['line']}]";
         }
 
+        if (is_null($msg)) $msg = 'NULL';
         if (is_array($msg)) $msg = "\n" . print_r($msg, true);
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
         elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
