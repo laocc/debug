@@ -677,8 +677,10 @@ class Debug
         if (is_null($path)) return $this->folder() . $this->path();
         $m = $this->router['module'];
         if ($m) $m = "/{$m}";
+        $force = ($path[0] === '/');//  以/开头，强制完整目录，不带域名
         $path = trim($path, '/');
         $this->_folder = '/' . _DOMAIN . "{$m}/{$path}";
+        if ($force) $this->_folder = "{$m}/{$path}";
         $this->_path = '';
         return $this;
     }
