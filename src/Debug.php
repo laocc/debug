@@ -30,6 +30,7 @@ class Debug
     private int $_zip = 0;//压缩级别
     private int $_mysql_run = 0;//mysql执行了多少次
 
+    private string $_domain = _DOMAIN;
     private string $_folder;
     private string $_symlink;
     private string $_root;
@@ -615,6 +616,12 @@ class Debug
         return $this;
     }
 
+    public function setDomainPath(string $path)
+    {
+        $this->_domain = $path;
+        return $this;
+    }
+
     /**
      * 修改前置目录，前置目录从域名或module之后开始
      * @param string|null $path
@@ -627,12 +634,12 @@ class Debug
 
         if (is_null($path)) {
             if (!isset($this->_folder)) {
-                return $this->_folder = '/' . _DOMAIN . "/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+                return $this->_folder = "/{$this->_domain}/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
             }
             return $this->_folder;
         }
         $path = trim($path, '/');
-        $this->_folder = '/' . _DOMAIN . "/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+        $this->_folder = "/{$this->_domain}/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
         return $this;
     }
 
@@ -679,7 +686,7 @@ class Debug
         if ($m) $m = "/{$m}";
         $force = ($path[0] === '/');//  以/开头，强制完整目录，不带域名
         $path = trim($path, '/');
-        $this->_folder = '/' . _DOMAIN . "{$m}/{$path}";
+        $this->_folder = "/{$this->_domain}{$m}/{$path}";
         if ($force) $this->_folder = "{$m}/{$path}";
         $this->_path = '';
         return $this;
