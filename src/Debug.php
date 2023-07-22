@@ -618,7 +618,8 @@ class Debug
 
     public function setDomainPath(string $path)
     {
-        $this->_domain = $path;
+        $this->_domain = "/{$path}";
+        if (!$path) $this->_domain = "";
         return $this;
     }
 
@@ -634,12 +635,12 @@ class Debug
 
         if (is_null($path)) {
             if (!isset($this->_folder)) {
-                return $this->_folder = "/{$this->_domain}/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+                return $this->_folder = "{$this->_domain}/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
             }
             return $this->_folder;
         }
         $path = trim($path, '/');
-        $this->_folder = "/{$this->_domain}/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+        $this->_folder = "{$this->_domain}/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
         return $this;
     }
 
@@ -686,7 +687,7 @@ class Debug
         if ($m) $m = "/{$m}";
         $force = ($path[0] === '/');//  以/开头，强制完整目录，不带域名
         $path = trim($path, '/');
-        $this->_folder = "/{$this->_domain}{$m}/{$path}";
+        $this->_folder = "{$this->_domain}{$m}/{$path}";
         if ($force) $this->_folder = "{$m}/{$path}";
         $this->_path = '';
         return $this;
