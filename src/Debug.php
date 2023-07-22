@@ -30,7 +30,7 @@ class Debug
     private int $_zip = 0;//压缩级别
     private int $_mysql_run = 0;//mysql执行了多少次
 
-    private string $_domain = _DOMAIN;
+    private string $_domain = '/' . _DOMAIN;
     private string $_folder;
     private string $_symlink;
     private string $_root;
