@@ -7,6 +7,7 @@ use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
 use esp\http\Http;
+use esp\http\Rpc;
 use function iconv_strlen;
 
 class Debug
@@ -293,20 +294,18 @@ class Debug
 
         } else if ($this->mode === 'rpc' and isset($this->_rpc)) {
 
-            /**
-             * 发到RPC，写入move专用目录，然后由后台移到实际目录
-             */
-            $post = json_encode([
+            $post = [
                 'filename' => $filename,
                 'data' => base64_encode(gzcompress($data, $this->_zip ?: 5))
-            ], 256 | 64);
+            ];
+            /**
+             * 这里发送到RPC的数据，不需要目标服务器特殊处理，框架会自动处理
+             * 由：本类创建时自动拦截，在第81行左右
+             */
+            $rpc = new Rpc($this->_rpc);
+            $send = $rpc->decode('html')->post($this->_transfer_uri, $post);
+            if (is_array($send)) $send = json_encode($send, 320);
 
-            $http = new Http();
-            $send = $http->rpc($this->_rpc)
-                ->encode('html')
-                ->data($post)
-                ->post($this->_transfer_uri)
-                ->html();
             return "Rpc:{$send}";
         }
 
