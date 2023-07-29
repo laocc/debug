@@ -6,8 +6,6 @@ namespace esp\debug;
 use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
-use esp\http\Http;
-use esp\http\Rpc;
 use function iconv_strlen;
 
 class Debug
@@ -25,7 +23,6 @@ class Debug
     private array $_mysql = array();
     private array $_conf;
     private string $_errorText;
-    private array $_rpc;
     private string $_transfer_uri = '/_esp_debug_transfer';
     private string $_transfer_path = '';
     private int $_zip = 0;//压缩级别
@@ -45,47 +42,27 @@ class Debug
     private array $router = [];
     private array $response = ['type' => null, 'display' => null];
 
-    public string $mode;
+    public string $mode = 'cgi';
 
     public function __construct(Dispatcher $dispatcher, array $conf)
     {
         $this->_dispatcher = &$dispatcher;
-        $this->_conf = $conf + [
-                'path' => _RUNTIME,
-                'mode' => 'cgi',
-                'run' => false,
-                'host' => [],
-                'counter' => false];
+        $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
         $this->_zip = intval($this->_conf['zip'] ?? 0);
         $this->mode = $this->_conf['mode'];
         if ($this->mode === 'none') return;
+        if (isset($conf['_transfer_path'])) $this->_transfer_path = $conf['_transfer_path'];
 
         /**
          * mode:
          * cgi:     直接保存，并不是在shutdown中执行，所以如果报错，前端可见
-         * shutdown:程序结束时直接保存在本机，在shutdown中执行，主从模式下不适用，因为日志会被分散
-         * rpc:     发送到RPC接口，只发生在从服务器中
+         * shutdown:程序结束时直接保存在本机，在shutdown中执行，若系统是分布式，需要另外想办法合并日志
          * transfer:用本地文件中转，由后台转存到实际目录，这只发生在主服务器的RPC中
          */
-        if (isset($conf['rpc'])) $this->_rpc = $conf['rpc'];
-        else if (defined('_RPC')) $this->_rpc = _RPC;
-
-        //当前是主服务器，还继续判断保存方式
-        if (isset($this->_rpc) and is_file(_RUNTIME . '/master.lock')) {
-            if ($this->mode === 'rpc') $this->mode = $conf['master'] ?? 'shutdown';
-            if (isset($conf['transfer'])) $this->_transfer_path = $conf['transfer'];
-
-            //保存节点服务器发来的日志
-            if (_VIRTUAL === 'rpc' && _URI === $this->_transfer_uri) {
-                $save = $this->transferDebug();
-                exit(getenv('SERVER_ADDR') . ";Length={$save};Time:" . microtime(true));
-            }
-        }
 
         $this->_star = [$_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true), memory_get_usage()];
-
         $this->_ROOT_len = strlen(_ROOT);
         $this->_run = boolval($this->_conf['auto'] ?? 1);
         $this->_time = microtime(true);
@@ -98,65 +75,6 @@ class Debug
             'g' => ''];
         $this->prevTime = microtime(true);
         $this->relay('START', 1);
-    }
-
-    /**
-     * 将节点发来的日志保存到指定目录，或者直接保存
-     * 当前只会在master中执行
-     * 也就是本类中 save_debug_file 方法发出的数据
-     *
-     * @return bool|string
-     */
-    private function transferDebug()
-    {
-        $input = file_get_contents("php://input");
-        if (empty($input)) return 'null';
-
-        $array = json_decode($input, true);
-        if (!isset($array['data'])) $array['data'] = '未发送data数据';
-
-        if (empty($array['data'])) $array['data'] = 'NULL Data';
-        else {
-            $array['data'] = base64_decode($array['data']);
-            if (!$this->_zip) $array['data'] = gzuncompress($array['data']);
-        }
-
-//        if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
-
-        //临时中转文件
-        if ($this->mode === 'transfer') {
-            $move = $this->_transfer_path . '/' . urlencode(base64_encode($array['filename']));
-            return $this->save_md_file($move, $array['data']);
-        }
-
-        return $this->save_md_file($array['filename'], $array['data']);
-    }
-
-    private function save_md_file(string $file, $content): bool
-    {
-        if (is_array($content)) $content = json_encode($content, 256 | 64);
-
-        $path = dirname($file);
-        $tryOnce = true;
-        tryOnce:
-        $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
-            if (!file_exists($path)) @mkdir($path, 0740, true);
-        }, $path);
-
-        $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
-        if ($save === false && $tryOnce) {
-            $tryOnce = false;
-            goto tryOnce;
-        }
-
-        if (isset($this->_symlink)) {
-            $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
-            if ($fileLink !== $file) {
-                symlink($file, $fileLink);
-            }
-        }
-
-        return $save;
     }
 
 
@@ -184,11 +102,11 @@ class Debug
      * @param string|null $path
      * @throws Error
      */
-    public static function move(bool $show = false, string $path = null)
+    public function moveTransfer(bool $show = false, string $path = null)
     {
-        if (!_CLI) throw new Error('debug->move() 只能运行于CLI环境');
+        if (!_CLI) throw new Error('debug->moveTransfer() 只能运行于CLI环境');
 
-        if (is_null($path)) $path = _RUNTIME . '/debug/move';
+        if (is_null($path)) $path = $this->_transfer_path;
         $time = 0;
 
         reMove:
@@ -197,8 +115,10 @@ class Debug
         $array = array();
         foreach ($dir as $i => $f) {
             if ($f->isDot()) continue;
-            if ($i > 100) break;
-            if ($f->isFile()) $array[] = $f->getFilename();
+            if ($f->isFile()) {
+                $array[] = $f->getFilename();
+                if ($i > 100) break;//每次只移100个文件，防止文件太多卡死
+            }
         }
         if (empty($array)) return;
 
@@ -225,9 +145,9 @@ class Debug
     /**
      * @param $error
      * @param int $preLev
-     * @return bool|string
+     * @return bool
      */
-    public function error($error, int $preLev = 1)
+    public function error($error, int $preLev = 1): bool
     {
         $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
         $info = [
@@ -248,35 +168,11 @@ class Debug
     }
 
     /**
-     * @param $error
-     * @param int $preLev
-     * @return bool|string
-     */
-    public function warn($error, int $preLev = 1)
-    {
-        $tract = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, $preLev + 1)[0];
-
-        $info = [
-            'time' => date('Y-m-d H:i:s'),
-            'HOST' => getenv('SERVER_ADDR'),
-            'Url' => _URL,
-            'Referer' => getenv("HTTP_REFERER"),
-            'Debug' => $this->filename(),
-            'Trace' => $tract,
-            'Error' => $error,
-            'Server' => $_SERVER,
-        ];
-        $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['warn'] ?? (_RUNTIME . '/warn')];
-        $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
-        return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
-    }
-
-    /**
      * @param string $filename
      * @param string $data
-     * @return string
+     * @return bool
      */
-    public function save_debug_file(string $filename, string $data)
+    public function save_debug_file(string $filename, string $data): bool
     {
         if ($this->mode === 'none') return false;
 
@@ -287,32 +183,40 @@ class Debug
         }
 
         if ($this->_zip and $filename[-1] !== 'z') $filename .= 'z';
-
-        if ($this->mode === 'transfer') {
-            //当前发生在master中，若有定义transfer，则直接发到中转目录
-            if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
-            return $this->save_md_file($this->_transfer_path . '/' . urlencode(base64_encode($filename)), $data);
-
-        } else if ($this->mode === 'rpc' and isset($this->_rpc)) {
-
-            $post = [
-                'filename' => $filename,
-                'data' => base64_encode(gzcompress($data, $this->_zip ?: 5))
-            ];
-            /**
-             * 这里发送到RPC的数据，不需要目标服务器特殊处理，框架会自动处理
-             * 由：本类创建时自动拦截，在第81行左右
-             */
-            $rpc = new Rpc($this->_rpc);
-            $send = $rpc->decode('html')->post($this->_transfer_uri, $post);
-            if (is_array($send)) $send = json_encode($send, 320);
-
-            return "Rpc:{$send}";
-        }
-
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
+        if ($this->mode === 'transfer') {
+            $filename = $this->_transfer_path . '/' . urlencode(base64_encode($filename));
+        }
+
         return $this->save_md_file($filename, $data);
+    }
+
+    private function save_md_file(string $file, $content): bool
+    {
+        if (is_array($content)) $content = json_encode($content, 256 | 64);
+
+        $path = dirname($file);
+        $tryOnce = true;
+        tryOnce:
+        $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
+            if (!file_exists($path)) @mkdir($path, 0740, true);
+        }, $path);
+
+        $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
+        if ($save === false && $tryOnce) {
+            $tryOnce = false;
+            goto tryOnce;
+        }
+
+        if (isset($this->_symlink)) {
+            $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
+            if ($fileLink !== $file) {
+                symlink($file, $fileLink);
+            }
+        }
+
+        return $save;
     }
 
     public function setRouter(array $request): void
