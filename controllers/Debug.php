@@ -129,16 +129,15 @@ class Debug extends Controller
         $array = array();
         $dir = new \DirectoryIterator($path);
         foreach ($dir as $f) {
-            if ($f->isDir()) {
-                $name = $f->getFilename();
-                if (in_array($name, ['.', '..'])) continue;
-                $nPath = "{$path}/{$name}";
-                if (is_dir($nPath)) {
-                    if ($lev) {
-                        $array[$name] = $this->path($nPath, $lev++);
-                    } else {
-                        $array[$name] = $nPath;
-                    }
+            if ($f->isDot()) continue;
+            if (!$f->isDir()) continue;
+            $name = $f->getFilename();
+            $nPath = "{$path}/{$name}";
+            if (is_dir($nPath)) {
+                if ($lev) {
+                    $array[$name] = $this->path($nPath, $lev++);
+                } else {
+                    $array[$name] = $nPath;
                 }
             }
         }
@@ -157,8 +156,8 @@ class Debug extends Controller
         $file = array();
         $dir = new \DirectoryIterator($path);
         foreach ($dir as $f) {
+            if ($f->isDot()) continue;
             $name = $f->getFilename();
-            if (in_array($name, ['.', '..'])) continue;
             if ($f->isDir()) {
                 $folder[$name] = "{$path}/{$name}";
             } elseif ($f->isFile()) {
@@ -229,50 +228,49 @@ class Debug extends Controller
         $value = [];
         $client = [];
         foreach ($dir as $f) {
+            if ($f->isDot()) continue;
+            if (!$f->isFile()) continue;
             $name = $f->getFilename();
-            if ($name === '.' or $name === '..') continue;
             $val = [];
-            if ($f->isFile()) {
-                $val['fn'] = $f->getPathname();
-                $text = file_get_contents($val['fn']);
-                if (preg_match('/"HTTP_COOKIE": "(.+)",/', $text, $mch)) {
-                    $val['ck'] = $mch[1];
+            $val['fn'] = $f->getPathname();
+            $text = file_get_contents($val['fn']);
+            if (preg_match('/"HTTP_COOKIE": "(.+)",/', $text, $mch)) {
+                $val['ck'] = $mch[1];
 //                    if (in_array($mch[1], $client)) continue;//过滤相同用户
-                    $client[] = $mch[1];
-                }
-                if (preg_match('/"HTTP_USER_AGENT": "(.+)",/', $text, $mch)) {
-                    $val['ua'] = $mch[1];
-                }
+                $client[] = $mch[1];
+            }
+            if (preg_match('/"HTTP_USER_AGENT": "(.+)",/', $text, $mch)) {
+                $val['ua'] = $mch[1];
+            }
 
-                if (preg_match('/"error": "(.+)"/i', $text, $mch)) {
-                    $val['er'] = $mch[1];
-                } else if (preg_match('/"message": "(.+)"/i', $text, $mch)) {
-                    $val['er'] = $mch[1];
-                } else if (preg_match('/"Error": \[[\s.]+"(.+?)"\n/i', $text, $mch)) {
-                    $val['er'] = $mch[1];
-                }
+            if (preg_match('/"error": "(.+)"/i', $text, $mch)) {
+                $val['er'] = $mch[1];
+            } else if (preg_match('/"message": "(.+)"/i', $text, $mch)) {
+                $val['er'] = $mch[1];
+            } else if (preg_match('/"Error": \[[\s.]+"(.+?)"\n/i', $text, $mch)) {
+                $val['er'] = $mch[1];
+            }
 
-                if (preg_match('/"file": "(.+)"/i', $text, $mch)) {
-                    $val['fl'] = $mch[1];
+            if (preg_match('/"file": "(.+)"/i', $text, $mch)) {
+                $val['fl'] = $mch[1];
+            }
+            if (preg_match('/"line": (\d+),/i', $text, $mch)) {
+                if (isset($val['fl'])) {
+                    $val['fl'] = "{$val['fl']}({$mch[1]})";
+                } else {
+                    $val['ln'] = $mch[1];
                 }
-                if (preg_match('/"line": (\d+),/i', $text, $mch)) {
-                    if (isset($val['fl'])) {
-                        $val['fl'] = "{$val['fl']}({$mch[1]})";
-                    } else {
-                        $val['ln'] = $mch[1];
-                    }
-                }
-                if ($warn) {
-                    preg_match('/ip=(.+?)\&/i', $text, $url);
-                    preg_match('/REAL_IP": "(.+?)",/i', $text, $sev);
-                    preg_match('/REMOTE_ADDR": "(.+?)",/i', $text, $rem);
-                    $ia = ($url[1] ?? '');
-                    $ib = ($sev[1] ?? ($rem[1] ?? ''));
-                    if ($ia === $ib) {
-                        $val['ip'] = "<em class='red'>{$ia} ~ {$ib}</em>";
-                    } else {
-                        $val['ip'] = "{$ia} ~ {$ib}";
-                    }
+            }
+            if ($warn) {
+                preg_match('/ip=(.+?)\&/i', $text, $url);
+                preg_match('/REAL_IP": "(.+?)",/i', $text, $sev);
+                preg_match('/REMOTE_ADDR": "(.+?)",/i', $text, $rem);
+                $ia = ($url[1] ?? '');
+                $ib = ($sev[1] ?? ($rem[1] ?? ''));
+                if ($ia === $ib) {
+                    $val['ip'] = "<em class='red'>{$ia} ~ {$ib}</em>";
+                } else {
+                    $val['ip'] = "{$ia} ~ {$ib}";
                 }
             }
             $value[$name] = $val;
@@ -312,11 +310,9 @@ class Debug extends Controller
         if (empty($fd)) {
             $dir = new \DirectoryIterator($path);
             foreach ($dir as $f) {
-                if ($f->isDir()) {
-                    $fn = $f->getFilename();
-                    if ($fn === '.' or $fn === '..') continue;
-                    $folder[] = $fn;
-                }
+                if ($f->isDot()) continue;
+                if (!$f->isDir()) continue;
+                $folder[] = $f->getFilename();
             }
         } else {
             $file = $this->file("{$path}/{$fd}", ['md', 'json']);
@@ -348,26 +344,24 @@ class Debug extends Controller
         $dir = new \DirectoryIterator($path);
         $c = 0;
         foreach ($dir as $f) {
-            $name = $f->getFilename();
-            if ($name === '.' or $name === '..') continue;
-            if ($f->isFile()) {
-                $fn = $f->getPathname();
-                $text = file_get_contents($fn);
-                if (preg_match('/"error": "(.+)"/i', $text, $mch)) {
-                    if ($error === $mch[1]) {
-                        unlink($fn);
-                        $c++;
-                    }
-                } else if (preg_match('/"message": "(.+)"/i', $text, $mch)) {
-                    if ($error === $mch[1]) {
-                        unlink($fn);
-                        $c++;
-                    }
-                } else if (preg_match('/[2] => (.+)/i', $text, $mch)) {
-                    if ($error === $mch[1]) {
-                        unlink($fn);
-                        $c++;
-                    }
+            if ($f->isDot()) continue;
+            if (!$f->isFile()) continue;
+            $fn = $f->getPathname();
+            $text = file_get_contents($fn);
+            if (preg_match('/"error": "(.+)"/i', $text, $mch)) {
+                if ($error === $mch[1]) {
+                    unlink($fn);
+                    $c++;
+                }
+            } else if (preg_match('/"message": "(.+)"/i', $text, $mch)) {
+                if ($error === $mch[1]) {
+                    unlink($fn);
+                    $c++;
+                }
+            } else if (preg_match('/[2] => (.+)/i', $text, $mch)) {
+                if ($error === $mch[1]) {
+                    unlink($fn);
+                    $c++;
                 }
             }
         }
@@ -429,6 +423,7 @@ class Debug extends Controller
         if (is_string($ext)) $ext = [$ext];
         foreach ($ext as &$t) $t = trim($t, '.');
         foreach ($dir as $f) {
+            if ($f->isDot()) continue;
             if ($f->isFile()) {
                 if ($ext) {
                     if (in_array($f->getExtension(), $ext)) $array[] = $f->getFilename();
