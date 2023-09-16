@@ -134,7 +134,7 @@ class Debug
                 $path = dirname($move);
                 if (!file_exists($path)) @mkdir($path, 0740, true);
                 rename("{$path}/{$file}", $move);
-            } catch (Error $e) {
+            } catch (\Error|\Exception $e) {
                 print_r(['moveDebug' => $e]);
             }
         }
@@ -200,10 +200,19 @@ class Debug
         $tryOnce = true;
         tryOnce:
         $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
-            if (!file_exists($path)) @mkdir($path, 0740, true);
+            try {
+                if (!file_exists($path)) @mkdir($path, 0740, true);
+            } catch (\Exception|\Error $error) {
+
+            }
         }, $path);
 
-        $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
+        try {
+            $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
+        } catch (\Exception|\Error $error) {
+            $save = false;
+        }
+
         if ($save === false && $tryOnce) {
             $tryOnce = false;
             goto tryOnce;
@@ -298,14 +307,14 @@ class Debug
             $data[] = "  {$this->_node[0]['t']}\t{$this->_node[0]['m']}\t{$this->_node[0]['n']}\t{$this->_node[0]['g']}进程启动到Debug被创建的消耗总量\n";
             unset($this->_node[0]);
         }
-        $data[] = "" . (str_repeat('-', 100)) . "\n";
+        $data[] = str_repeat('-', 100) . "\n";
         //具体监控点
         $len = min($this->_node_len + 3, 50);
         foreach ($this->_node as $i => $row) {
             $data[] = "  {$row['t']}\t{$row['m']}\t{$row['n']}\t" . sprintf("%-{$len}s", $row['g']) . "\t{$row['f']}\n";
         }
 
-        $data[] = "" . (str_repeat('-', 100)) . "\n";
+        $data[] = str_repeat('-', 100) . "\n";
         $time = sprintf($this->_print_format, (microtime(true) - $this->_star[0]) * 1000);
         $memo = sprintf($this->_print_format, (memory_get_usage() - $this->_star[1]) / 1024);
         $total = sprintf($this->_print_format, (memory_get_usage()) / 1024);

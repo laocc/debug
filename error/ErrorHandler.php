@@ -37,7 +37,7 @@ class ErrorHandler
             header("Status: 500 Internal Server Error", true);
             echo("[{$err[0]}]{$err[1]}");
         });
-        set_exception_handler(function (Error $error) {
+        set_exception_handler(function (Throwable $error) {
             header("Status: 500 Internal Server Error", true);
             echo("[{$error->getCode()}]{$error->getMessage()}");
         });
@@ -234,7 +234,7 @@ class ErrorHandler
             $errLogFile = dirname($path) . "/error/{$md5Key}.md";
 
             if (is_readable($errLogFile)) {
-                if (!is_null($this->debug)) $this->debug->disable();
+                if (isset($this->debug)) $this->debug->disable();
                 file_put_contents($errLogFile, date('Y-m-d H:i:s') . "\n", FILE_APPEND);
                 return;
             }
@@ -265,7 +265,7 @@ class ErrorHandler
             'time' => date('Y-m-d H:i:s'),
             'HOST' => getenv('HTTP_HOST'),
             'Url' => _URL,
-            'Debug' => !is_null($this->debug) ? $this->debug->filename() : '',
+            'Debug' => isset($this->debug) ? $this->debug->filename() : '',
             'errKey' => $md5Key,
             'Error' => $error,
             'Server' => $_SERVER,
@@ -276,7 +276,7 @@ class ErrorHandler
         $filename = date($filename) . mt_rand() . '.json';
         $filename = $path . '/' . trim($filename, '/');
 
-        if (!is_null($this->debug)) {
+        if (isset($this->debug)) {
             //这里不能再继续加shutdown，因为有可能运行到这里已经处于shutdown内
             $this->debug->relay($info['Error']);
             $sl = $this->debug->save_logs('by Error Saved');

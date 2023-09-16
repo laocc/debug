@@ -34,7 +34,6 @@ class Transfer
         if (empty($array['data'])) $array['data'] = 'NULL Data';
         if (is_array($array['data'])) $array['data'] = print_r($array['data'], true);
 
-
         //临时中转文件
         if ($transfer) {
             if (!is_readable($this->_transfer_path)) @mkdir($this->_transfer_path, 0740, true);
@@ -86,7 +85,7 @@ class Transfer
                 if (!is_readable($p)) @mkdir($p, 0740, true);
                 else if (!is_dir($p)) @mkdir($p, 0740, true);
                 rename("{$path}/{$file}", $move);
-            } catch (Error $e) {
+            } catch (\Error|\Exception $e) {
                 print_r(['moveDebug' => $e]);
             }
         }
@@ -106,7 +105,7 @@ class Transfer
                 return;
             }
             return;
-        } catch (Error $e) {
+        } catch (\Error|\Exception $e) {
             return;
         }
     }
