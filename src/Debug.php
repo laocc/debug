@@ -8,6 +8,11 @@ use esp\error\Error;
 use esp\core\Dispatcher;
 use function iconv_strlen;
 
+function for_iconv_strlen_handler(...$err)
+{
+    return true;
+}
+
 class Debug
 {
     private Dispatcher $_dispatcher;
@@ -88,7 +93,7 @@ class Debug
         $rFile = realpath($file);
         if (!$rFile or !is_readable($rFile)) return "## 日志文件不存在或无权限读取：\n{$file}";
         $text = file_get_contents($rFile);
-        if (substr($rFile, -4) === '.mdz') $text = gzuncompress($text);
+        if (str_ends_with($rFile, '.mdz')) $text = gzuncompress($text);
         return $text;
     }
 
@@ -434,7 +439,7 @@ class Debug
     /**
      * 停止记录，只是停止记录，不是禁止
      * @param int $pre
-     * @return $this|null
+     * @return Debug
      */
     public function stop(int $pre = 1): Debug
     {
@@ -459,7 +464,7 @@ class Debug
     /**
      * @param $val
      * @param int $pre
-     * @return $this
+     * @return Debug
      */
     public function mysql_log($val, int $pre = 1): Debug
     {
@@ -475,7 +480,7 @@ class Debug
      * @param $msg
      * @param int $preLev 调用的位置，若是通过中间件调用，请在调用此函数时提供下面的内容：
      * @param array|null $prevTrace
-     * @return $this|bool
+     * @return Debug
      */
     public function relay($msg, int $preLev = 0, array $prevTrace = null): Debug
     {
@@ -498,7 +503,14 @@ class Debug
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
         elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
 
-        $this->_node_len = max(iconv_strlen($msg), $this->_node_len);
+        try {
+            set_error_handler('for_iconv_strlen_handler');
+            $this->_node_len = max(iconv_strlen($msg), $this->_node_len);
+            restore_error_handler();
+        } catch (\Exception|\Error $e) {
+            $this->_node_len = 0;
+        }
+
         $nowMemo = memory_get_usage();
         $time = sprintf($this->_print_format, (microtime(true) - $this->prevTime) * 1000);
         $memo = sprintf($this->_print_format, ($nowMemo - $this->memory) / 1024);
@@ -628,7 +640,7 @@ class Debug
      * 设置，或读取完整的保存文件地址和名称
      * 如果运行一次后，第二次运行时不会覆盖之前的值，也就是只以第一次取得的值为准
      * @param string|null $file
-     * @return null|string
+     * @return string
      */
     public function filename(string $file = null): string
     {
