@@ -231,13 +231,17 @@ class Debug
          * 若symlink被禁用，需要在php.ini中解除禁用
          */
         if (isset($this->_symlink) and $this->_sure_symlink) {
-            if ($this->_symlink[0] === '/') {
+            if (!empty($this->_symlink) and $this->_symlink[0] === '/') {
                 $fileLink = $this->_symlink;
             } else {
                 $fileLink = $this->realDebugFile();
             }
+            try {
+                $lPath = dirname($fileLink);
+                if (!file_exists($lPath)) @mkdir($lPath, 0740, true);
+            } catch (\Exception|\Error $error) {
 
-            @mkdir(dirname($fileLink), 0740, true);
+            }
             if (function_exists('symlink')) {
                 \symlink($file, $fileLink);
             } else {
