@@ -36,6 +36,7 @@ class Debug
     private string $_domain = '/' . _DOMAIN;
     private string $_folder;
     private string $_symlink;
+    private bool $_sure_symlink = false;
     private string $_root;
     private int $_ROOT_len = 0;
 
@@ -223,10 +224,24 @@ class Debug
             goto tryOnce;
         }
 
-        if (isset($this->_symlink)) {
-            $fileLink = str_replace(_DOMAIN, $this->_symlink, $file);
-            if ($fileLink !== $file) {
-                symlink($file, $fileLink);
+        /**
+         * $this->_sure_symlink
+         * 是指在这之前曾指定过其他目录，则可以按需创建软链接
+         * 若之前没指定过目录，则不需要创建连接
+         * 若symlink被禁用，需要在php.ini中解除禁用
+         */
+        if (isset($this->_symlink) and $this->_sure_symlink) {
+            if ($this->_symlink[0] === '/') {
+                $fileLink = $this->_symlink;
+            } else {
+                $fileLink = $this->realDebugFile();
+            }
+
+            @mkdir(dirname($fileLink), 0740, true);
+            if (function_exists('symlink')) {
+                \symlink($file, $fileLink);
+            } else {
+                file_put_contents($fileLink, $file);
             }
         }
 
@@ -538,6 +553,7 @@ class Debug
         }
         $this->_root = '/' . trim($path, '/');
         if (!in_array(_HOST, $this->_conf['host'])) $this->_root .= "/hackers";
+        $this->_sure_symlink = true;
         return $this;
     }
 
@@ -566,19 +582,41 @@ class Debug
         }
         $path = trim($path, '/');
         $this->_folder = "{$this->_domain}/{$m}{$path}/{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+        $this->_sure_symlink = true;
         return $this;
     }
 
     /**
      * 将正常的日志文件创建一个软链接
      *
-     * @param string $path
+     * @param string $path 若为空则链接到原始规则文件
      * @return $this
      */
-    public function symlink(string $path): Debug
+    public function symlink(string $path = ''): Debug
     {
         $this->_symlink = trim($path, '/');
         return $this;
+    }
+
+    /**
+     * 原始路径
+     * @return string
+     */
+    private function realDebugFile()
+    {
+        $root = str_replace(
+            ['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}'],
+            [_RUNTIME, _ROOT, _VIRTUAL, date('Y_m_d')],
+            $this->_conf['path']);
+        $m = $this->router['module'];
+        if (!empty($m)) $m = strtoupper($m) . "/";
+
+        $folder = "{$this->_domain}/{$m}{$this->router['controller']}/{$this->router['action']}" . ucfirst($this->router['method']);
+        list($s, $c) = explode('.', microtime(true) . '.0');
+        $file = date($this->_conf['rules']['filename'], intval($s)) . "_{$c}_" . mt_rand(100, 999);
+
+        if ($this->_hasError) $file .= '_Error';
+        return "{$root}{$folder}{$this->_path}/{$file}.md";
     }
 
 
@@ -596,6 +634,7 @@ class Debug
         } else {
             $this->_path = '/' . trim($path, '/');
         }
+        $this->_sure_symlink = true;
         return $this;
     }
 
@@ -615,6 +654,7 @@ class Debug
         $this->_folder = "{$this->_domain}{$m}/{$path}";
         if ($force) $this->_folder = "{$m}/{$path}";
         $this->_path = '';
+        $this->_sure_symlink = true;
         return $this;
     }
 
@@ -632,6 +672,7 @@ class Debug
             }
             return $this->_file;
         }
+        $this->_sure_symlink = true;
         $this->_file = trim(trim($file, '.md'), '/');
         return $this;
     }
