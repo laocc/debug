@@ -6,6 +6,7 @@ namespace esp\debug;
 use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
+use function esp\helper\save_file;
 use function iconv_strlen;
 
 function for_iconv_strlen_handler(...$err)
@@ -200,29 +201,9 @@ class Debug
 
     private function save_md_file(string $file, $content): bool
     {
-        if (is_array($content)) $content = json_encode($content, 256 | 64);
 
-        $path = dirname($file);
-        $tryOnce = true;
-        tryOnce:
-        $this->_dispatcher->locked('2.save_debug_file', function (string $path) {
-            try {
-                if (!file_exists($path)) @mkdir($path, 0740, true);
-            } catch (\Exception|\Error $error) {
+        $save = (boolean)save_file($file, $content);
 
-            }
-        }, $path);
-
-        try {
-            $save = (boolean)@file_put_contents($file, $content, LOCK_EX);
-        } catch (\Exception|\Error $error) {
-            $save = false;
-        }
-
-        if ($save === false && $tryOnce) {
-            $tryOnce = false;
-            goto tryOnce;
-        }
 
         /**
          * $this->_sure_symlink
@@ -239,7 +220,7 @@ class Debug
             try {
                 $lPath = dirname($fileLink);
                 if (!file_exists($lPath)) @mkdir($lPath, 0740, true);
-            } catch (\Exception|\Error $error) {
+            } catch (\Throwable $error) {
 
             }
             if (function_exists('symlink')) {
@@ -523,10 +504,8 @@ class Debug
         elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
 
         try {
-            set_error_handler('for_iconv_strlen_handler');
             $this->_node_len = max(iconv_strlen($msg), $this->_node_len);
-            restore_error_handler();
-        } catch (\Exception|\Error $e) {
+        } catch (\Throwable $e) {
             $this->_node_len = 0;
         }
 
