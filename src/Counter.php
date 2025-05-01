@@ -66,7 +66,7 @@ class Counter
         foreach ($traces as $l => $trace) {
             if ($lev === $l) return $trace;
 //            $inVendor = str_starts_with($trace['file'], $vendor);
-            $inVendor = (strpos($trace['file'], $vendor) === 0);
+            $inVendor = (str_starts_with($trace['file'], $vendor));
             if (!$inVendor) {
                 if ($inApp) return $trace;
                 $inApp = true;
@@ -75,7 +75,7 @@ class Counter
         return $traces[-1] ?? [];
     }
 
-    private function shutdownSave()
+    private function shutdownSave(): void
     {
         if (empty($this->recode)) return;
         $this->redis->select($this->conf['_redis_index'] ?? 0);
@@ -112,7 +112,7 @@ class Counter
                 'file' => str_replace(_ROOT, '', $trace['file'] ?? ''),
                 'line' => $trace['line'] ?? '0',
             ];
-            if (strpos($log['sql'], 'Hit') === 0) {
+            if (str_starts_with($log['sql'], 'Hit')) {
                 $sqlMd5 = md5($log['sql']);
             } else {
                 $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
