@@ -44,13 +44,14 @@ class Counter
     {
         $key = $this->conf['mysql'] ?? null;
         if (!$key) return;
+
+        if ($action === 'connect') {
+            $this->redis->hIncrBy($key . '_connect_' . date('Y_m_d'), strval(time()), 1);
+        }
+
         $trace = $this->getRealTrace(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS), $traceLevel - 1);
 
         $this->recode[] = [$action, $sql, $trace];
-
-//        register_shutdown_function(function (string $action, string $sql, array $trace) {
-//            $this->saveRecodeMysql($action, $sql, $trace);
-//        }, $action, $sql, $trace);
     }
 
     /**
@@ -204,6 +205,21 @@ class Counter
         $key = "{$this->conf['concurrent']}_concurrent_" . date('Y_m_d', $time);
         $value = $this->redis->hGetAll($key);
         if ($step === 0) return $value;
+        return $this->buildTimeData($value, $step);
+    }
+
+    public function getConnect(int $time = 0, int $step = 1): array
+    {
+        if (!$this->conf['mysql']) return [];
+        if (!$time) $time = time();
+        $key = "{$this->conf['mysql']}_connect_" . date('Y_m_d', $time);
+        $value = $this->redis->hGetAll($key);
+        if ($step === 0) return $value;
+        return $this->buildTimeData($value, $step);
+    }
+
+    private function buildTimeData(array $value, int $step): array
+    {
         $dTime = strtotime(date('Ymd'));
         arsort($value);
         $maxCont = [];
