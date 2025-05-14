@@ -499,7 +499,7 @@ class Debug
         }
 
         if (is_null($msg)) $msg = 'NULL';
-        if (is_array($msg)) $msg = "\n" . print_r($msg, true);
+        if (is_array($msg)) $msg = "\n" . json_encode($msg, 256 | 64 | 128);
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
         elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
 
