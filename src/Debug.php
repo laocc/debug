@@ -6,6 +6,7 @@ namespace esp\debug;
 use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
+use function esp\helper\esp_dump;
 use function esp\helper\save_file;
 use function iconv_strlen;
 
@@ -501,7 +502,7 @@ class Debug
         if (is_null($msg)) $msg = 'NULL';
         if (is_array($msg)) $msg = "\n" . json_encode($msg, 256 | 64 | 128);
         elseif (is_object($msg)) $msg = "\n" . print_r($msg, true);
-        elseif (!is_string($msg)) $msg = "\n" . var_export($msg, true);
+        elseif (!is_string($msg)) $msg = esp_dump($msg);
 
         try {
             $this->_node_len = max(iconv_strlen($msg), $this->_node_len);

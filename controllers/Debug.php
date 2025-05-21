@@ -60,7 +60,7 @@ class Debug extends Controller
         }
 
         $path = realpath($pathT);
-        if (strpos($path, $this->_rootPath) !== 0) $this->exit("无权限查看该目录:" . var_export($pathT, true));
+        if (!str_starts_with($path, $this->_rootPath)) $this->exit("无权限查看该目录:" . var_export($pathT, true));
 
         if (is_file($path)) $path = dirname($path);
 
