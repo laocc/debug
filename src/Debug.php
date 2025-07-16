@@ -171,7 +171,7 @@ class Debug
         if (is_array($error)) $error = json_encode($error, 256 | 64 | 128);
         $this->relay("[red;{$error}]", $preLev + 1);
         $conf = ['filename' => 'YmdHis', 'path' => $this->_conf['error'] ?? (_RUNTIME . '/error')];
-        $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.md';
+        $filename = $conf['path'] . "/" . date($conf['filename']) . mt_rand() . '.json';
         return $this->save_debug_file($filename, json_encode($info, 64 | 128 | 256));
     }
 
