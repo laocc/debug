@@ -10,7 +10,14 @@ final class Timer
 
     public function __construct()
     {
-        $this->prev = microtime(true);
+        $nginx = floatval(getenv('REQUEST_TIME_FLOAT'));
+        $now = microtime(true);
+        $this->time[] = [
+            'node' => 'nginx Start',
+            'time' => sprintf("%.4f", $nginx),
+            'diff' => sprintf("% 9.2f", ($now - $nginx) * 1000),
+        ];
+        $this->prev = $now;
     }
 
     /**

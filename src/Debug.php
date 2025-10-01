@@ -366,13 +366,14 @@ class Debug
         }
 
         $data[] = "\n## 最后保存：" . microtime(true) . "\n";
-        $data[] = "\n## 实际运行：" . (microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? 0)) . "秒\n";
+        $data[] = "\n## 实际运行：" . (microtime(true) - ($_SERVER['REQUEST_TIME_FLOAT'] ?? 0)) . "秒\n\n";
 
         if (isset($this->_dispatcher->_timer)) {
+            $this->_dispatcher->_timer->node('Debug Save');
             $timer = $this->_dispatcher->_timer->value();
             $data[] = "```\n";
             foreach ($timer as $time) {
-                $data[] = "{$time['time']}\t{$time['diff']}\t{$time['node']}\n";
+                $data[] = "{$time['time']}\t{$time['diff']}ms\t{$time['node']}\n";
             }
             $data[] = "```\n";
         }
