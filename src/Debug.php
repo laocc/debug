@@ -10,10 +10,6 @@ use function esp\helper\esp_dump;
 use function esp\helper\save_file;
 use function iconv_strlen;
 
-function for_iconv_strlen_handler(...$err)
-{
-    return true;
-}
 
 class Debug
 {

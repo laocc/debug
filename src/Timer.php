@@ -23,7 +23,7 @@ final class Timer
         $this->time[] = [
             'node' => $node,
             'time' => sprintf("%.4f", $now),
-            'diff' => sprintf("% 9.2f", $now - $this->prev),
+            'diff' => sprintf("% 9.2f", ($now - $this->prev) * 1000),
         ];
         $this->prev = $now;
     }
