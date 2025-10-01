@@ -19,6 +19,9 @@ class Counter
     {
         $conf['mysql_log'] = rtrim($conf['mysql_log'] ?? (_RUNTIME . '/mysql'), '/') . '/';
         $conf['mysql_top'] = rtrim($conf['mysql_top'] ?? $conf['mysql_log'], '/') . '/';
+        $conf['mysql_log'] = $this->replacePath($conf['mysql_log']);
+        $conf['mysql_top'] = $this->replacePath($conf['mysql_top']);
+
         $this->conf = &$conf;
         $this->redis = &$redis;
         if (!is_null($request)) $this->request = &$request;
@@ -33,6 +36,13 @@ class Counter
         });
     }
 
+    private function replacePath(string $path): string
+    {
+        return str_replace(
+            ['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}'],
+            [_RUNTIME, _ROOT, _VIRTUAL, date('Y_m_d')],
+            $path);
+    }
 
     /**
      * 记录mysql并发
