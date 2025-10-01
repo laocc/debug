@@ -389,7 +389,7 @@ class Debug
     public function timer(string $node): Debug
     {
         if (isset($this->_dispatcher->_timer)) {
-            $this->_dispatcher->_timer->node($node);
+            $this->_dispatcher->_timer->node('-- ' . $node);
         }
         return $this;
     }
