@@ -16,14 +16,17 @@ final class Timer
         $request = floatval($_SERVER['REQUEST_TIME_FLOAT'] ?? 0);
         if (!$request) $request = $now;
         $this->start = $request;
+        $this->prev = $request;
 
         if ($nginx) {
             $this->time[] = [
                 'node' => 'Nginx Start',
                 'time' => sprintf("%.4f", $nginx),
                 'diff' => sprintf("% 9.2f", ($now - $nginx) * 1000),
-                'total' => sprintf("% 9.2f", ($now - $this->start) * 1000),
+                'total' => sprintf("% 9.2f", ($now - $nginx) * 1000),
             ];
+            $this->start = $nginx;
+            $this->prev = $nginx;
         }
         $this->time[] = [
             'node' => 'PHP Start',
@@ -31,7 +34,7 @@ final class Timer
             'diff' => sprintf("% 9.2f", ($now - $request) * 1000),
             'total' => sprintf("% 9.2f", ($now - $this->start) * 1000),
         ];
-        $this->prev = $now;
+        $this->prev = $request;
     }
 
     /**

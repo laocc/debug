@@ -382,6 +382,18 @@ class Debug
         return $this->save_debug_file($filename, implode($data));
     }
 
+    /**
+     * @param string $node
+     * @return $this
+     */
+    public function timer(string $node): Debug
+    {
+        if (isset($this->_dispatcher->_timer)) {
+            $this->_dispatcher->_timer->node($node);
+        }
+        return $this;
+    }
+
     public function setErrorText(string $text): Debug
     {
         $this->_errorText = $text;
