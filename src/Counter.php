@@ -129,8 +129,9 @@ class Counter
             } else {
                 $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
             }
-            $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $sqlMd5 . '.log';
-            mk_dir($fil);
+            $filePath = $this->conf['mysql_top'] . date('Y-m-d/', $time);
+            if (!is_dir($filePath)) mk_dir($filePath);
+            $fil = $filePath . $sqlMd5 . '.log';
             if (!is_file($fil)) {
                 file_put_contents($fil, json_encode($log, 256 | 64 | 128));
             }
