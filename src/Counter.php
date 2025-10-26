@@ -111,8 +111,9 @@ class Counter
                 'line' => $trace['line'] ?? '0',
                 'url' => _URL,
             ];
-            $fil = rtrim($logPath, '/') . date('/Y-m-d/Hi', $time) . '.log';
-            mk_dir($fil);
+            $filPath = rtrim($logPath, '/') . date('/Y-m-d/', $time);
+            if (!is_dir($filPath)) mk_dir($filPath);
+            $fil = $filPath . date('Hi', $time) . '.log';
             file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
         }
 
