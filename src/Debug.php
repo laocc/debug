@@ -211,7 +211,13 @@ class Debug
         return $this->save_md_file($filename, $data);
     }
 
-
+    /**
+     * 发送到异步服务器
+     *
+     * @param string $file
+     * @param $content
+     * @return bool
+     */
     private function asyncFile(string $file, $content): bool
     {
         $conf = $this->_conf['async'];
