@@ -200,9 +200,7 @@ class Debug
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
         if ($this->mode === 'async') {
-
-            $sync = $this->asyncFile($filename, $data);
-            if ($sync) return $sync;
+            return $this->asyncFile($filename, $data);
 
         } else if ($this->mode === 'transfer') {
             $filename = $this->_transfer_path . '/' . urlencode(base64_encode($filename));
@@ -222,8 +220,13 @@ class Debug
     {
         $conf = $this->_conf['async'];
         $rpc = new Rpc($conf['host'], $conf['ip']);
-        $sync = $rpc->post($conf['path'], ['virtual' => _VIRTUAL, 'file' => $file, 'content' => $content]);
-        if (is_string($sync)) return false;
+        $sync = $rpc->post($conf['path'], ['file' => $file, 'content' => $content]);
+        if (is_string($sync)) {
+
+            $content .= "\n\nAsync出错：" . $sync;
+
+            return $this->save_md_file($file, $content);
+        }
 
         return true;
     }
