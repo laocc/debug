@@ -6,6 +6,7 @@ namespace esp\debug;
 use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
+use laocc\rpc\Rpc;
 use function esp\helper\esp_dump;
 use function esp\helper\save_file;
 use function iconv_strlen;
@@ -51,7 +52,14 @@ class Debug
     public function __construct(Dispatcher $dispatcher, array $conf)
     {
         $this->_dispatcher = &$dispatcher;
-        $this->_conf = $conf + ['path' => _RUNTIME, 'mode' => 'cgi', 'run' => false, 'host' => [], 'counter' => false];
+        $this->_conf = $conf + [
+                'path' => _RUNTIME,
+                'mode' => 'cgi',
+                'run' => false,
+                'async' => ['domain' => ''],
+                'host' => [],
+                'counter' => false
+            ];
 
         //压缩日志，若启用压缩，则运维不能直接在服务器中执行日志查找关键词
         $this->_zip = intval($this->_conf['zip'] ?? 0);
@@ -61,9 +69,11 @@ class Debug
 
         /**
          * mode:
-         * cgi:     直接保存，并不是在shutdown中执行，所以如果报错，前端可见
-         * shutdown:程序结束时直接保存在本机，在shutdown中执行，若系统是分布式，需要另外想办法合并日志
-         * transfer:用本地文件中转，由后台转存到实际目录，这只发生在主服务器的RPC中
+         * none     :不保存
+         * cgi      :直接保存，并不是在shutdown中执行，所以如果报错，前端可见
+         * shutdown :程序结束时直接保存在本机，在shutdown中执行，若系统是分布式，需要另外想办法合并日志
+         * transfer :用本地文件中转，由后台转存到实际目录，这只发生在主服务器的RPC中
+         * async    :用RPC发送到日志服务器
          */
 
         $this->_star = [$_SERVER['REQUEST_TIME_FLOAT'] ?? microtime(true), memory_get_usage()];
@@ -189,12 +199,29 @@ class Debug
         if ($this->_zip and $filename[-1] !== 'z') $filename .= 'z';
         if ($this->_zip > 0) $data = gzcompress($data, $this->_zip);
 
-        if ($this->mode === 'transfer') {
+        if ($this->mode === 'async') {
+
+            $sync = $this->asyncFile($filename, $data);
+            if ($sync) return $sync;
+
+        } else if ($this->mode === 'transfer') {
             $filename = $this->_transfer_path . '/' . urlencode(base64_encode($filename));
         }
 
         return $this->save_md_file($filename, $data);
     }
+
+
+    private function asyncFile(string $file, $content): bool
+    {
+        $conf = $this->_conf['async'];
+        $rpc = new Rpc($conf['host'], $conf['ip']);
+        $sync = $rpc->post($conf['path'], ['virtual' => _VIRTUAL, 'file' => $file, 'content' => $content]);
+        if (is_string($sync)) return false;
+
+        return true;
+    }
+
 
     private function save_md_file(string $file, $content): bool
     {
@@ -230,7 +257,7 @@ class Debug
         return $save;
     }
 
-    public function setRouter(array $request): void
+    public function setRouter(array $request): Debug
     {
         $this->router = $request + [
                 'virtual' => null,
@@ -241,16 +268,19 @@ class Debug
                 'exists' => null,
                 'params' => [],
             ];
+        return $this;
     }
 
-    public function setController(string $cont)
+    public function setController(string $cont): Debug
     {
         $this->router['entrance'] = "{$cont}->{$this->router['action']}{$this->router['method']}(...params)";
+        return $this;
     }
 
-    public function setResponse(array $result): void
+    public function setResponse(array $result): Debug
     {
         $this->response = $result + ['type' => null, 'display' => null];
+        return $this;
     }
 
     /**
@@ -544,17 +574,39 @@ class Debug
     public function root(string $path = null)
     {
         if (is_null($path)) {
-            if (!isset($this->_root))
-                return $this->_root = str_replace(
-                    ['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}'],
-                    [_RUNTIME, _ROOT, _VIRTUAL, date('Y_m_d')],
-                    $this->_conf['path']);
+            if (!isset($this->_root)) return $this->replacePathKey($this->_conf['path']);
             return $this->_root;
         }
         $this->_root = '/' . trim($path, '/');
         if (!in_array(_HOST, $this->_conf['host'])) $this->_root .= "/hackers";
         $this->_sure_symlink = true;
         return $this;
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    private function replacePathKey(string $path): string
+    {
+        $search = [];
+        $replace = [];
+        foreach (['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}', '{MINUTE}', '{RAND}'] as $key) {
+            if (str_contains($path, $key)) {
+                $search[] = $key;
+                $replace[] = match ($key) {
+                    '{RUNTIME}' => _RUNTIME,
+                    '{ROOT}' => _ROOT,
+                    '{VIRTUAL}' => _VIRTUAL,
+                    '{DATE}' => date('Y_m_d'),
+                    '{MINUTE}' => date('Hi'),
+                    '{RAND}' => mt_rand(10000, 99999),
+                    default => '',
+                };
+            }
+        }
+
+        return str_replace($search, $replace, $path);
     }
 
     public function setDomainPath(string $path)
@@ -602,12 +654,9 @@ class Debug
      * 原始路径
      * @return string
      */
-    private function realDebugFile()
+    private function realDebugFile(): string
     {
-        $root = str_replace(
-            ['{RUNTIME}', '{ROOT}', '{VIRTUAL}', '{DATE}'],
-            [_RUNTIME, _ROOT, _VIRTUAL, date('Y_m_d')],
-            $this->_conf['path']);
+        $root = $this->replacePathKey($this->_conf['path']);
         $m = $this->router['module'];
         if (!empty($m)) $m = strtoupper($m) . "/";
 
