@@ -6,6 +6,7 @@ namespace esp\debug;
 use DirectoryIterator;
 use esp\error\Error;
 use esp\core\Dispatcher;
+use esp\http\Http;
 use laocc\rpc\Rpc;
 use function esp\helper\esp_dump;
 use function esp\helper\save_file;
@@ -202,12 +203,35 @@ class Debug
         if ($this->mode === 'async') {
             return $this->asyncFile($filename, $data);
 
+        } else if ($this->mode === 'rpc') {
+            return $this->rpcFile($filename, $data);
+
         } else if ($this->mode === 'transfer') {
             $filename = $this->_transfer_path . '/' . urlencode(base64_encode($filename));
         }
 
         return $this->save_md_file($filename, $data);
     }
+
+    public function asyncFile(string $filename, string $content): bool
+    {
+        $conf = $this->_conf['async'];
+
+        $data = ['file' => $filename, 'content' => $content, 'append' => 0];
+        $option = ['encode' => 'json'];
+        $http = new Http($option);
+        $http->headers('sign', md5($data['file'] . $conf['token']));
+        $send = $http->data($data)->post($conf['api']);
+        $resp = $send->data();
+
+        if (!$resp['success']) {
+            $content .= "\n\nAsync出错：" . json_encode($resp, 320);
+            return $this->save_md_file($filename, $content);
+        }
+
+        return true;
+    }
+
 
     /**
      * 发送到异步服务器
@@ -216,9 +240,9 @@ class Debug
      * @param $content
      * @return bool
      */
-    private function asyncFile(string $file, $content): bool
+    private function rpcFile(string $file, $content): bool
     {
-        $conf = $this->_conf['async'];
+        $conf = $this->_conf['rpc'];
         $rpc = new Rpc($conf['host'], $conf['ip']);
         $sync = $rpc->post($conf['path'], ['file' => $file, 'content' => $content]);
         if (is_string($sync)) {
