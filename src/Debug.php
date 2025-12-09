@@ -216,12 +216,13 @@ class Debug
     public function asyncFile(string $filename, string $content): bool
     {
         $conf = $this->_conf['async'];
-
+        $api = $conf['api'] ?? '';
+        if (isset($conf['ip'])) $api = "http://{$conf['ip']}:{$conf['port']}/logs";
         $data = ['file' => $filename, 'content' => $content, 'append' => 0];
         $option = ['encode' => 'json'];
         $http = new Http($option);
         $http->headers('sign', md5($data['file'] . $conf['token']));
-        $send = $http->data($data)->post($conf['api']);
+        $send = $http->data($data)->post($api);
         $resp = $send->data();
 
         if (!$resp['success']) {
