@@ -218,7 +218,13 @@ class Debug
         $conf = $this->_conf['async'];
         $api = $conf['api'] ?? '';
         if (isset($conf['ip'])) $api = "http://{$conf['ip']}:{$conf['port']}/logs";
-        $data = ['file' => $filename, 'content' => $content, 'append' => 0];
+        $plat = $conf['platform'] ?? (defined('_PLATFORM') ? _PLATFORM : '');
+        $data = [
+            'file' => $filename,
+            'content' => $content,
+            'platform' => $plat,
+            'append' => $conf['append'] ?? ''
+        ];
         $option = ['encode' => 'json'];
         $http = new Http($option);
         $http->headers('sign', md5($data['file'] . $conf['token']));
