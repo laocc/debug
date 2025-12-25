@@ -217,7 +217,7 @@ class Debug
     {
         $conf = $this->_conf['async'];
         $api = $conf['api'] ?? '';
-        if (isset($conf['ip'])) $api = "http://{$conf['ip']}:{$conf['port']}/logs";
+        if (isset($conf['ip'])) $api = "http://{$conf['ip']}:{$conf['port']}/logs/save";
         $plat = $conf['platform'] ?? (defined('_PLATFORM') ? _PLATFORM : '');
         $data = [
             'file' => $filename,
