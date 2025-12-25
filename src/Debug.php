@@ -231,8 +231,8 @@ class Debug
         $send = $http->data($data)->post($api);
         $resp = $send->data();
 
-        if (!$resp['success']) {
-            $content .= "\n\nAsync出错：" . json_encode($resp, 320);
+        if (!($resp['success'] ?? 0)) {
+//            $content .= "\n\nAsync出错：" . json_encode($resp, 320);
             return $this->save_md_file($filename, $content);
         }
 
