@@ -111,7 +111,7 @@ class Counter
                 'line' => $trace['line'] ?? '0',
                 'url' => _URL,
             ];
-            $filPath = rtrim($logPath, '/') . date('/Y-m-d/', $time);
+            $filPath = rtrim($logPath, '/') . date('/Y_m_d/', $time);
             if (!is_dir($filPath)) mk_dir($filPath);
             $fil = $filPath . date('Hi', $time) . '.log';
             file_put_contents($fil, json_encode($log, 256 | 64) . "\n\n", FILE_APPEND);
@@ -129,7 +129,7 @@ class Counter
             } else {
                 $sqlMd5 = md5($log['sql'] . $log['file'] . $log['line']);
             }
-            $filePath = $this->conf['mysql_top'] . date('Y-m-d/', $time);
+            $filePath = $this->conf['mysql_top'] . date('Y_m_d/', $time);
             if (!is_dir($filePath)) mk_dir($filePath);
             $fil = $filePath . $sqlMd5 . '.log';
             if (!is_file($fil)) {
@@ -151,7 +151,7 @@ class Counter
         $i = 0;
         foreach ($value as $k => $val) {
             if ($val < $minRun) break;
-            $fil = $this->conf['mysql_top'] . date('Y-m-d/', $time) . $k . '.log';
+            $fil = $this->conf['mysql_top'] . date('Y_m_d/', $time) . $k . '.log';
             if (!is_readable($fil)) {
                 $sql = [
                     'key' => $k,
