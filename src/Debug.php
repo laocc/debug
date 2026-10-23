@@ -117,7 +117,7 @@ class Debug
      * @param string|null $path
      * @throws Error
      */
-    public function moveTransfer(bool $show = false, string $path = null)
+    public function moveTransfer(bool $show = false, ?string $path = null)
     {
         if (!_CLI) throw new Error('debug->moveTransfer() 只能运行于CLI环境');
 
@@ -479,7 +479,7 @@ class Debug
      * @param bool $val
      * @return $this
      */
-    public function setPrint(string $type, bool $val = null): Debug
+    public function setPrint(string $type, ?bool $val = null): Debug
     {
         if ($type === 'null') {
             $this->_conf['print'] = [];
@@ -569,7 +569,7 @@ class Debug
      * @param array|null $prevTrace
      * @return Debug
      */
-    public function relay($msg, int $preLev = 0, array $prevTrace = null): Debug
+    public function relay($msg, int $preLev = 0, ?array $prevTrace = null): Debug
     {
         if (!$this->_run) return $this;
         else if ($this->mode === 'none') return $this;
@@ -611,7 +611,7 @@ class Debug
      * @param string|null $path
      * @return $this|string
      */
-    public function root(string $path = null)
+    public function root(?string $path = null)
     {
         if (is_null($path)) {
             if (!isset($this->_root)) return $this->replacePathKey($this->_conf['path']);
@@ -661,7 +661,7 @@ class Debug
      * @param string|null $path
      * @return $this|string
      */
-    public function folder(string $path = null)
+    public function folder(?string $path = null)
     {
         $m = $this->router['module'];
         if (!empty($m)) $m = strtoupper($m) . "/";
@@ -715,7 +715,7 @@ class Debug
      * @param bool $append
      * @return $this|string
      */
-    public function path(string $path = null, bool $append = false)
+    public function path(?string $path = null, bool $append = false)
     {
         if (is_null($path)) return $this->_path;
         if ($append) {
@@ -733,7 +733,7 @@ class Debug
      * @param string|null $path
      * @return $this|string
      */
-    public function fullPath(string $path = null)
+    public function fullPath(?string $path = null)
     {
         if (is_null($path)) return $this->folder() . $this->path();
         $m = $this->router['module'];
@@ -752,7 +752,7 @@ class Debug
      * @param string|null $file
      * @return $this|string
      */
-    public function file(string $file = null)
+    public function file(?string $file = null)
     {
         if (is_null($file)) {
             if (!isset($this->_file)) {
@@ -772,7 +772,7 @@ class Debug
      * @param string|null $file
      * @return string
      */
-    public function filename(string $file = null): string
+    public function filename(?string $file = null): string
     {
         if (empty($this->router['controller'])) return '';
         if ($file) return $this->file($file);

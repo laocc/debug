@@ -15,7 +15,7 @@ class Counter
     private Redis $redis;
     private array $recode = [];
 
-    public function __construct(array $conf, Redis $redis, Request $request = null)
+    public function __construct(array $conf, Redis $redis, ?Request $request = null)
     {
         $conf['mysql_log'] = rtrim($conf['mysql_log'] ?? (_RUNTIME . '/mysql'), '/') . '/';
         $conf['mysql_top'] = rtrim($conf['mysql_top'] ?? $conf['mysql_log'], '/') . '/';
@@ -302,7 +302,7 @@ class Counter
         ];
     }
 
-    public function getMysql(int $time = 0, int $step = 1, string $action = null)
+    public function getMysql(int $time = 0, int $step = 1, ?string $action = null)
     {
         if (!$this->conf['mysql']) return [];
         if (!$time) $time = time();
@@ -389,7 +389,7 @@ class Counter
      * @return array|array[]
      * @throws Error
      */
-    public function getCounter(int $time = 0, bool $method = null): array
+    public function getCounter(int $time = 0, ?bool $method = null): array
     {
         if ($time === 0) $time = time();
         $conf = $this->conf['counter'];
