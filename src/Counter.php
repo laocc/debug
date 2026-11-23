@@ -415,7 +415,7 @@ class Counter
                 case true:
                     $ca = "{$key[1]}:{$ca}";
                     break;
-                case false;
+                case false:
                     break;
                 default:
                     $ca .= ucfirst($key[1]);
