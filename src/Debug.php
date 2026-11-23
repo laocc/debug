@@ -266,7 +266,7 @@ class Debug
     private function save_md_file(string $file, $content): bool
     {
 
-        $save = (boolean)save_file($file, $content);
+        $save = (bool)save_file($file, $content);
 
 
         /**
